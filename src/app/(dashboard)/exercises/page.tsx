@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Dumbbell } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { ExerciseModal } from "@/components/exercise-modal";
-import { ExerciseCard } from "@/components/ExerciseCard";
+import { ExerciseModal } from "@/components/exercise/ExerciseModal";
+import { ExerciseCard } from "@/components/exercise/ExerciseCard";
 import { CATEGORY_LABEL, MUSCLE_GROUP_LABEL, type Exercise, type ExerciseCategory, type MuscleGroup } from "@/types";
 
 const ALL = "ALL";

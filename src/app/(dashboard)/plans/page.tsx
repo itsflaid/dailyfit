@@ -5,8 +5,8 @@ import { Plus, ListChecks } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
-import { PlanCard } from "@/components/PlanCard";
-import { PlanModal } from "@/components/PlanModal";
+import { PlanCard } from "@/components/plan/PlanCard";
+import { PlanModal } from "@/components/plan/PlanModal";
 import { type Plan } from "@/types";
 
 export default function PlansPage() {
