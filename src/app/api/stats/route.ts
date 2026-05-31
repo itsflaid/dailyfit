@@ -2,18 +2,49 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const userId = session.user.id;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // ─── Resolve selected month ────────────────────────────────────────────────
+  const { searchParams } = new URL(req.url);
+  const monthParam = searchParams.get("month"); // "YYYY-MM" | null
+
+  const refDate = monthParam
+    ? new Date(`${monthParam}-01T00:00:00`)
+    : new Date(today.getFullYear(), today.getMonth(), 1);
+
+  // Guard: invalid date string → fall back to current month
+  const safeRefDate = isNaN(refDate.getTime())
+    ? new Date(today.getFullYear(), today.getMonth(), 1)
+    : refDate;
+
+  const firstDayOfMonth = new Date(
+    safeRefDate.getFullYear(),
+    safeRefDate.getMonth(),
+    1
+  );
+  const lastDayOfMonth = new Date(
+    safeRefDate.getFullYear(),
+    safeRefDate.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  // ─── Weekly (always relative to today) ────────────────────────────────────
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(today.getDate() - 6);
 
-  // --- Weekly ---
   const weekLogs = await prisma.dailyLog.findMany({
     where: { userId, date: { gte: sevenDaysAgo } },
     include: { items: { include: { exercise: true } } },
@@ -24,7 +55,9 @@ export async function GET() {
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(sevenDaysAgo);
     d.setDate(sevenDaysAgo.getDate() + i);
-    const log = weekLogs.find((l) => new Date(l.date).toDateString() === d.toDateString());
+    const log = weekLogs.find(
+      (l) => new Date(l.date).toDateString() === d.toDateString()
+    );
     return {
       day: dayNames[d.getDay()],
       total: log?.items.length ?? 0,
@@ -32,41 +65,56 @@ export async function GET() {
     };
   });
 
-  // --- Monthly chart per category per day ---
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  // ─── Monthly chart per category per day ───────────────────────────────────
+  const CATEGORIES = ["STRENGTH", "CARDIO", "BALANCE", "FLEXIBILITY"] as const;
 
   const monthLogs = await prisma.dailyLog.findMany({
-    where: { userId, date: { gte: firstDayOfMonth } },
+    where: {
+      userId,
+      date: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+    },
     include: { items: { include: { exercise: true } } },
     orderBy: { date: "asc" },
   });
 
-  const CATEGORIES = ["STRENGTH", "CARDIO", "BALANCE", "FLEXIBILITY"] as const;
-
   const monthlyData = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = new Date(today.getFullYear(), today.getMonth(), i + 1);
+    const d = new Date(
+      safeRefDate.getFullYear(),
+      safeRefDate.getMonth(),
+      i + 1
+    );
     const isFuture = d > today;
+
+    // Future days → no data point (null entries = gap in chart)
     if (isFuture) return { date: i + 1 };
 
-    const log = monthLogs.find((l) => new Date(l.date).toDateString() === d.toDateString());
+    const log = monthLogs.find(
+      (l) => new Date(l.date).toDateString() === d.toDateString()
+    );
     const checkedItems = log?.items.filter((it) => it.isChecked) ?? [];
 
     const entry: Record<string, number | null> = { date: i + 1 };
     for (const cat of CATEGORIES) {
-      entry[cat] = checkedItems.filter((it) => it.exercise.category === cat).length;
+      entry[cat] = checkedItems.filter(
+        (it) => it.exercise.category === cat
+      ).length;
     }
     return entry;
   });
 
-  // Monthly summary
+  // ─── Monthly summary ───────────────────────────────────────────────────────
   const monthItems = monthLogs.flatMap((l) => l.items);
   const totalMonth = monthItems.length;
   const completedMonth = monthItems.filter((i) => i.isChecked).length;
-  const activeDaysMonth = monthLogs.filter((l) => l.items.some((i) => i.isChecked)).length;
-  const monthName = today.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const activeDaysMonth = monthLogs.filter((l) =>
+    l.items.some((i) => i.isChecked)
+  ).length;
+  const monthName = safeRefDate.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  });
 
-  // --- Streak ---
+  // ─── Streak (always from today backwards) ─────────────────────────────────
   let streak = 0;
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
@@ -81,7 +129,7 @@ export async function GET() {
     else break;
   }
 
-  // --- All exercises ---
+  // ─── All-time exercises ────────────────────────────────────────────────────
   const allItems = await prisma.dailyLogItem.findMany({
     where: { dailyLog: { userId }, isChecked: true },
     include: { exercise: true },
@@ -94,7 +142,9 @@ export async function GET() {
     }
     exerciseCount[item.exerciseId].count++;
   }
-  const allExercises = Object.values(exerciseCount).sort((a, b) => b.count - a.count);
+  const allExercises = Object.values(exerciseCount).sort(
+    (a, b) => b.count - a.count
+  );
   const topExercises = allExercises.slice(0, 5);
 
   const categoryCount: Record<string, number> = {};
@@ -102,16 +152,27 @@ export async function GET() {
     const cat = item.exercise.category;
     categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
   }
-  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({ name, value }));
+  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   const weekItems = weekLogs.flatMap((l) => l.items);
   const totalWeek = weekItems.length;
   const completedWeek = weekItems.filter((i) => i.isChecked).length;
 
   return NextResponse.json({
-    streak, totalWeek, completedWeek,
-    totalMonth, completedMonth, activeDaysMonth, monthName,
-    weeklyData, monthlyData,
-    topExercises, allExercises, categoryData,
+    streak,
+    totalWeek,
+    completedWeek,
+    totalMonth,
+    completedMonth,
+    activeDaysMonth,
+    monthName,
+    weeklyData,
+    monthlyData,
+    topExercises,
+    allExercises,
+    categoryData,
   });
 }

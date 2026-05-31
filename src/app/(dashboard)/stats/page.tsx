@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, type Variants } from "framer-motion";
 import { StatCards } from "@/components/stats/StatCard";
@@ -31,32 +32,61 @@ const containerVariants: Variants = {
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 28 } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 280, damping: 28 },
+  },
 };
 
+function getInitialMonth(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function StatsPage() {
+  const [selectedMonth, setSelectedMonth] = useState(getInitialMonth);
+
   const { data: stats, isLoading } = useQuery<StatsData>({
-    queryKey: ["stats"],
-    queryFn: () => fetch("/api/stats").then((r) => r.json()),
+    queryKey: ["stats", selectedMonth],
+    queryFn: () =>
+      fetch(`/api/stats?month=${selectedMonth}`).then((r) => r.json()),
   });
 
   if (isLoading) {
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl h-24 animate-pulse" style={{ border: "1.5px solid rgba(0,0,0,0.07)" }} />
+          <div
+            key={i}
+            className="bg-white rounded-2xl h-24 animate-pulse"
+            style={{ border: "1.5px solid rgba(0,0,0,0.07)" }}
+          />
         ))}
       </div>
     );
   }
 
   return (
-    <motion.div className="space-y-5 pb-10" variants={containerVariants} initial="hidden" animate="show">
+    <motion.div
+      className="space-y-5 pb-10"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
       <motion.div variants={cardVariants}>
-        <p className="text-[0.72rem] font-semibold tracking-[2.5px] uppercase mb-1" style={{ color: "#C41230" }}>
+        <p
+          className="text-[0.72rem] font-semibold tracking-[2.5px] uppercase mb-1"
+          style={{ color: "#C41230" }}
+        >
           Progress
         </p>
-        <h1 className="font-display text-4xl md:text-5xl" style={{ color: "#0F0A0B" }}>Statistik</h1>
+        <h1
+          className="font-display text-4xl md:text-5xl"
+          style={{ color: "#0F0A0B" }}
+        >
+          Statistik
+        </h1>
       </motion.div>
 
       <motion.div variants={cardVariants}>
@@ -70,7 +100,10 @@ export default function StatsPage() {
         />
       </motion.div>
 
-      <motion.div className="grid md:grid-cols-2 gap-4 min-w-0" variants={cardVariants}>
+      <motion.div
+        className="grid md:grid-cols-2 gap-4 min-w-0"
+        variants={cardVariants}
+      >
         <div className="min-w-0">
           <WeeklyChart data={stats?.weeklyData ?? []} />
         </div>
@@ -79,6 +112,8 @@ export default function StatsPage() {
           <MonthlyChart
             data={stats?.monthlyData ?? []}
             monthName={stats?.monthName ?? ""}
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
           />
         </div>
       </motion.div>
