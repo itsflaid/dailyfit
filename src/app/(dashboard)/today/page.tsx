@@ -24,42 +24,47 @@ export default function TodayPage() {
   const total = items.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
+  const refreshProgressCaches = () => {
+    qc.invalidateQueries({ queryKey: ["stats"] });
+    qc.invalidateQueries({ queryKey: ["heatmap"] });
+  };
+
   const toggle = async (id: string, current: boolean) => {
-  // Optimistic update — langsung ubah cache tanpa nunggu server
-  qc.setQueryData<DailyLog>(["daily", date], (old) => {
-    if (!old) return old;
-    return {
-      ...old,
-      items: old.items.map((i) =>
-        i.id === id ? { ...i, isChecked: !current } : i
-      ),
-    };
-  });
-
-  const res = await fetch(`/api/daily-logs/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ isChecked: !current }),
-  });
-
-  if (!res.ok) {
-    // Kalau gagal, rollback balik ke state semula
     qc.setQueryData<DailyLog>(["daily", date], (old) => {
       if (!old) return old;
       return {
         ...old,
         items: old.items.map((i) =>
-          i.id === id ? { ...i, isChecked: current } : i
+          i.id === id ? { ...i, isChecked: !current } : i
         ),
       };
     });
-    toast.error("Gagal memperbarui");
-    return;
-  }
+    refreshProgressCaches();
 
-  // Invalidate tetap dipanggil buat sync data terbaru dari server
-  qc.invalidateQueries({ queryKey: ["daily"] });
-};
+    const res = await fetch(`/api/daily-logs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isChecked: !current }),
+    });
+
+    if (!res.ok) {
+      qc.setQueryData<DailyLog>(["daily", date], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((i) =>
+            i.id === id ? { ...i, isChecked: current } : i
+          ),
+        };
+      });
+      refreshProgressCaches();
+      toast.error("Gagal memperbarui");
+      return;
+    }
+
+    qc.invalidateQueries({ queryKey: ["daily", date] });
+    refreshProgressCaches();
+  };
 
   const addExercises = async (exerciseIds: string[], source: "plan" | "manual") => {
     const res = await fetch("/api/daily-logs", {
@@ -70,8 +75,22 @@ export default function TodayPage() {
     const data = await res.json();
     if (!res.ok) return toast.error("Gagal menambahkan");
     if (data.added === 0) return toast.info("Latihan sudah ada di hari ini");
+    qc.setQueryData<DailyLog>(["daily", date], (old) => {
+      if (!old?.items) return data;
+
+      const existing = new Set(old.items.map((item) => item.id));
+      return {
+        ...data,
+        items: [
+          ...data.items.filter(
+            (item: DailyLog["items"][number]) => !existing.has(item.id)
+          ),
+          ...old.items,
+        ],
+      };
+    });
     toast.success(`Latihan ditambahkan`);
-    qc.invalidateQueries({ queryKey: ["daily"] });
+    refreshProgressCaches();
   };
 
   return (
