@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id)
@@ -115,18 +117,29 @@ export async function GET(req: Request) {
   });
 
   // ─── Streak (always from today backwards) ─────────────────────────────────
+  const streakStart = new Date(today);
+  streakStart.setDate(today.getDate() - 364);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const activeLogs = await prisma.dailyLog.findMany({
+    where: {
+      userId,
+      date: { gte: streakStart, lt: tomorrow },
+      items: { some: { isChecked: true } },
+    },
+    select: { date: true },
+  });
+  const activeDates = new Set(
+    activeLogs.map((log) => new Date(log.date).toDateString())
+  );
+
   let streak = 0;
   for (let i = 0; i < 365; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const nextD = new Date(d);
-    nextD.setDate(d.getDate() + 1);
-    const log = await prisma.dailyLog.findFirst({
-      where: { userId, date: { gte: d, lt: nextD } },
-      include: { items: true },
-    });
-    if (log && log.items.some((it) => it.isChecked)) streak++;
-    else break;
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    if (!activeDates.has(date.toDateString())) break;
+    streak++;
   }
 
   // ─── All-time exercises ────────────────────────────────────────────────────
@@ -161,18 +174,25 @@ export async function GET(req: Request) {
   const totalWeek = weekItems.length;
   const completedWeek = weekItems.filter((i) => i.isChecked).length;
 
-  return NextResponse.json({
-    streak,
-    totalWeek,
-    completedWeek,
-    totalMonth,
-    completedMonth,
-    activeDaysMonth,
-    monthName,
-    weeklyData,
-    monthlyData,
-    topExercises,
-    allExercises,
-    categoryData,
-  });
+  return NextResponse.json(
+    {
+      streak,
+      totalWeek,
+      completedWeek,
+      totalMonth,
+      completedMonth,
+      activeDaysMonth,
+      monthName,
+      weeklyData,
+      monthlyData,
+      topExercises,
+      allExercises,
+      categoryData,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    }
+  );
 }

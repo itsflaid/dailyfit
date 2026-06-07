@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, ListChecks, CalendarCheck2, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -29,25 +29,29 @@ export default function TodayPage() {
     qc.invalidateQueries({ queryKey: ["heatmap"] });
   };
 
-  const toggle = async (id: string, current: boolean) => {
-    qc.setQueryData<DailyLog>(["daily", date], (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        items: old.items.map((i) =>
-          i.id === id ? { ...i, isChecked: !current } : i
-        ),
-      };
-    });
-    refreshProgressCaches();
-
-    const res = await fetch(`/api/daily-logs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isChecked: !current }),
-    });
-
-    if (!res.ok) {
+  const toggleMutation = useMutation({
+    mutationKey: ["daily-progress"],
+    scope: { id: "daily-progress" },
+    mutationFn: async ({ id, current }: { id: string; current: boolean }) => {
+      const res = await fetch(`/api/daily-logs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isChecked: !current }),
+      });
+      if (!res.ok) throw new Error("Gagal memperbarui");
+    },
+    onMutate: ({ id, current }) => {
+      qc.setQueryData<DailyLog>(["daily", date], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((i) =>
+            i.id === id ? { ...i, isChecked: !current } : i
+          ),
+        };
+      });
+    },
+    onError: (_error, { id, current }) => {
       qc.setQueryData<DailyLog>(["daily", date], (old) => {
         if (!old) return old;
         return {
@@ -57,40 +61,56 @@ export default function TodayPage() {
           ),
         };
       });
-      refreshProgressCaches();
       toast.error("Gagal memperbarui");
-      return;
-    }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["daily", date] });
+      refreshProgressCaches();
+    },
+  });
 
-    qc.invalidateQueries({ queryKey: ["daily", date] });
-    refreshProgressCaches();
+  const addMutation = useMutation({
+    mutationKey: ["daily-progress"],
+    scope: { id: "daily-progress" },
+    mutationFn: async ({
+      exerciseIds,
+      source,
+    }: {
+      exerciseIds: string[];
+      source: "plan" | "manual";
+    }) => {
+      const res = await fetch("/api/daily-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, exerciseIds, source }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error("Gagal menambahkan");
+      return data as DailyLog & { added?: number };
+    },
+    onSuccess: (data) => {
+      if (data.added === 0) {
+        toast.info("Latihan sudah ada di hari ini");
+        return;
+      }
+
+      qc.setQueryData<DailyLog>(["daily", date], data);
+      toast.success("Latihan ditambahkan");
+    },
+    onError: () => {
+      toast.error("Gagal menambahkan");
+    },
+    onSettled: () => {
+      refreshProgressCaches();
+    },
+  });
+
+  const toggle = (id: string, current: boolean) => {
+    toggleMutation.mutate({ id, current });
   };
 
-  const addExercises = async (exerciseIds: string[], source: "plan" | "manual") => {
-    const res = await fetch("/api/daily-logs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, exerciseIds, source }),
-    });
-    const data = await res.json();
-    if (!res.ok) return toast.error("Gagal menambahkan");
-    if (data.added === 0) return toast.info("Latihan sudah ada di hari ini");
-    qc.setQueryData<DailyLog>(["daily", date], (old) => {
-      if (!old?.items) return data;
-
-      const existing = new Set(old.items.map((item) => item.id));
-      return {
-        ...data,
-        items: [
-          ...data.items.filter(
-            (item: DailyLog["items"][number]) => !existing.has(item.id)
-          ),
-          ...old.items,
-        ],
-      };
-    });
-    toast.success(`Latihan ditambahkan`);
-    refreshProgressCaches();
+  const addExercises = (exerciseIds: string[], source: "plan" | "manual") => {
+    addMutation.mutate({ exerciseIds, source });
   };
 
   return (
