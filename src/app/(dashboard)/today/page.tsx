@@ -234,7 +234,7 @@ export default function TodayPage() {
       const maxOrder = previousLog?.items.reduce((max, item) => Math.max(max, item.order), -1) ?? -1;
 
       if (fresh.length > 0) {
-        const optimisticItems = fresh.map((exercise, index) => ({
+        const optimisticItems: DailyLog["items"] = fresh.map((exercise, index) => ({
           id: `optimistic-${exercise.id}-${Date.now()}`,
           dailyLogId: previousLog?.id ?? `optimistic-${date}`,
           exerciseId: exercise.id,
