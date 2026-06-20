@@ -142,6 +142,14 @@ export async function GET(req: Request) {
     streak++;
   }
 
+  let previousStreak = 0;
+  for (let i = 1; i < 365; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    if (!activeDates.has(date.toDateString())) break;
+    previousStreak++;
+  }
+
   // ─── All-time exercises ────────────────────────────────────────────────────
   const allItems = await prisma.dailyLogItem.findMany({
     where: { dailyLog: { userId }, isChecked: true },
@@ -177,6 +185,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       streak,
+      previousStreak,
       totalWeek,
       completedWeek,
       totalMonth,

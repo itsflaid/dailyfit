@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useIsMutating, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion, type Variants } from "framer-motion";
 import { StatCards } from "@/components/stats/StatCard";
 import { WeeklyChart } from "@/components/stats/WeeklyChart";
@@ -46,21 +46,16 @@ function getInitialMonth(): string {
 
 export default function StatsPage() {
   const [selectedMonth, setSelectedMonth] = useState(getInitialMonth);
-  const pendingProgress = useIsMutating({
-    mutationKey: ["daily-progress"],
-  });
-
-  const { data: stats, isLoading, isFetching } = useQuery<StatsData>({
+  const { data: stats, isLoading } = useQuery<StatsData>({
     queryKey: ["stats", selectedMonth],
     queryFn: () =>
       fetch(`/api/stats?month=${selectedMonth}`, { cache: "no-store" }).then(
         (r) => r.json()
       ),
-    enabled: pendingProgress === 0,
     refetchOnMount: "always",
   });
 
-  if (pendingProgress > 0 || isLoading || isFetching) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (

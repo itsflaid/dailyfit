@@ -1,11 +1,69 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { Plus, ListChecks, CalendarCheck2, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDateLabel, getTodayDate } from "@/lib/utils";
 import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type Plan } from "@/types";
+
+interface StatsData {
+  streak: number;
+  previousStreak?: number;
+  totalWeek: number;
+  completedWeek: number;
+  totalMonth: number;
+  completedMonth: number;
+  activeDaysMonth: number;
+  weeklyData: { day: string; total: number; completed: number }[];
+  monthlyData: Array<Record<string, number | null>>;
+  topExercises: { name: string; count: number }[];
+  allExercises: { name: string; count: number }[];
+  categoryData: { name: string; value: number }[];
+}
+
+type StatsSnapshot = [QueryKey, StatsData | undefined][];
+
+function updateCachedStats(
+  qc: ReturnType<typeof useQueryClient>,
+  date: string,
+  update: (stats: StatsData, includesMonth: boolean) => StatsData
+) {
+  const month = date.slice(0, 7);
+  qc.getQueriesData<StatsData>({ queryKey: ["stats"] }).forEach(([key, stats]) => {
+    if (!stats) return;
+    const selectedMonth = typeof key[1] === "string" ? key[1] : month;
+    qc.setQueryData(key, update(stats, selectedMonth === month));
+  });
+}
+
+function updateExerciseCount(
+  items: { name: string; count: number }[],
+  name: string,
+  delta: number
+) {
+  const next = items.map((item) =>
+    item.name === name ? { ...item, count: Math.max(0, item.count + delta) } : item
+  );
+  if (delta > 0 && !next.some((item) => item.name === name)) {
+    next.push({ name, count: delta });
+  }
+  return next.filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
+}
+
+function updateCategoryCount(
+  items: { name: string; value: number }[],
+  name: string,
+  delta: number
+) {
+  const next = items.map((item) =>
+    item.name === name ? { ...item, value: Math.max(0, item.value + delta) } : item
+  );
+  if (delta > 0 && !next.some((item) => item.name === name)) {
+    next.push({ name, value: delta });
+  }
+  return next.filter((item) => item.value > 0);
+}
 
 export default function TodayPage() {
   const qc = useQueryClient();
@@ -40,7 +98,20 @@ export default function TodayPage() {
       });
       if (!res.ok) throw new Error("Gagal memperbarui");
     },
-    onMutate: ({ id, current }) => {
+    onMutate: async ({ id, current }) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ["daily", date] }),
+        qc.cancelQueries({ queryKey: ["stats"] }),
+        qc.cancelQueries({ queryKey: ["heatmap"] }),
+      ]);
+
+      const previousLog = qc.getQueryData<DailyLog>(["daily", date]);
+      const previousStats = qc.getQueriesData<StatsData>({ queryKey: ["stats"] });
+      const previousHeatmap = qc.getQueryData<Record<string, number>>(["heatmap"]);
+      const item = previousLog?.items.find((entry) => entry.id === id);
+      const checkedBefore = previousLog?.items.filter((entry) => entry.isChecked).length ?? 0;
+      const delta = current ? -1 : 1;
+
       qc.setQueryData<DailyLog>(["daily", date], (old) => {
         if (!old) return old;
         return {
@@ -50,17 +121,79 @@ export default function TodayPage() {
           ),
         };
       });
+
+      if (item) {
+        updateCachedStats(qc, date, (stats, includesMonth) => {
+          const allExercises = updateExerciseCount(
+            stats.allExercises,
+            item.exercise.name,
+            delta
+          );
+          const day = Number(date.slice(8, 10));
+          const monthlyData = includesMonth
+            ? stats.monthlyData.map((entry) =>
+                entry.date === day
+                  ? {
+                      ...entry,
+                      [item.exercise.category]: Math.max(
+                        0,
+                        Number(entry[item.exercise.category] ?? 0) + delta
+                      ),
+                    }
+                  : entry
+              )
+            : stats.monthlyData;
+
+          return {
+            ...stats,
+            streak:
+              checkedBefore === 0 && delta > 0
+                ? (stats.previousStreak ?? 0) + 1
+                : checkedBefore === 1 && delta < 0
+                  ? 0
+                  : stats.streak,
+            completedWeek: Math.max(0, stats.completedWeek + delta),
+            completedMonth: includesMonth
+              ? Math.max(0, stats.completedMonth + delta)
+              : stats.completedMonth,
+            activeDaysMonth: includesMonth
+              ? Math.max(
+                  0,
+                  stats.activeDaysMonth +
+                    (checkedBefore === 0 && delta > 0
+                      ? 1
+                      : checkedBefore === 1 && delta < 0
+                        ? -1
+                        : 0)
+                )
+              : stats.activeDaysMonth,
+            weeklyData: stats.weeklyData.map((entry, index) =>
+              index === stats.weeklyData.length - 1
+                ? { ...entry, completed: Math.max(0, entry.completed + delta) }
+                : entry
+            ),
+            monthlyData,
+            allExercises,
+            topExercises: allExercises.slice(0, 5),
+            categoryData: updateCategoryCount(
+              stats.categoryData,
+              item.exercise.category,
+              delta
+            ),
+          };
+        });
+
+        qc.setQueryData<Record<string, number>>(["heatmap"], (old) =>
+          old ? { ...old, [date]: Math.max(0, (old[date] ?? 0) + delta) } : old
+        );
+      }
+
+      return { previousLog, previousStats, previousHeatmap };
     },
-    onError: (_error, { id, current }) => {
-      qc.setQueryData<DailyLog>(["daily", date], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map((i) =>
-            i.id === id ? { ...i, isChecked: current } : i
-          ),
-        };
-      });
+    onError: (_error, _variables, context) => {
+      qc.setQueryData(["daily", date], context?.previousLog);
+      context?.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
+      qc.setQueryData(["heatmap"], context?.previousHeatmap);
       toast.error("Gagal memperbarui");
     },
     onSettled: () => {
@@ -73,20 +206,64 @@ export default function TodayPage() {
     mutationKey: ["daily-progress"],
     scope: { id: "daily-progress" },
     mutationFn: async ({
-      exerciseIds,
+      exercises,
       source,
     }: {
-      exerciseIds: string[];
+      exercises: Exercise[];
       source: "plan" | "manual";
     }) => {
       const res = await fetch("/api/daily-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, exerciseIds, source }),
+        body: JSON.stringify({ date, exerciseIds: exercises.map((exercise) => exercise.id), source }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error("Gagal menambahkan");
       return data as DailyLog & { added?: number };
+    },
+    onMutate: async ({ exercises, source }) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ["daily", date] }),
+        qc.cancelQueries({ queryKey: ["stats"] }),
+      ]);
+
+      const previousLog = qc.getQueryData<DailyLog>(["daily", date]);
+      const previousStats: StatsSnapshot = qc.getQueriesData<StatsData>({ queryKey: ["stats"] });
+      const existingIds = new Set(previousLog?.items.map((item) => item.exerciseId) ?? []);
+      const fresh = exercises.filter((exercise) => !existingIds.has(exercise.id));
+      const maxOrder = previousLog?.items.reduce((max, item) => Math.max(max, item.order), -1) ?? -1;
+
+      if (fresh.length > 0) {
+        const optimisticItems = fresh.map((exercise, index) => ({
+          id: `optimistic-${exercise.id}-${Date.now()}`,
+          dailyLogId: previousLog?.id ?? `optimistic-${date}`,
+          exerciseId: exercise.id,
+          isChecked: false,
+          order: maxOrder + index + 1,
+          source,
+          exercise,
+        }));
+
+        qc.setQueryData<DailyLog>(["daily", date], (old) => ({
+          id: old?.id ?? `optimistic-${date}`,
+          userId: old?.userId ?? "",
+          date: old?.date ?? date,
+          items: [...optimisticItems].reverse().concat(old?.items ?? []),
+        }));
+
+        updateCachedStats(qc, date, (stats, includesMonth) => ({
+          ...stats,
+          totalWeek: stats.totalWeek + fresh.length,
+          totalMonth: includesMonth ? stats.totalMonth + fresh.length : stats.totalMonth,
+          weeklyData: stats.weeklyData.map((entry, index) =>
+            index === stats.weeklyData.length - 1
+              ? { ...entry, total: entry.total + fresh.length }
+              : entry
+          ),
+        }));
+      }
+
+      return { previousLog, previousStats };
     },
     onSuccess: (data) => {
       if (data.added === 0) {
@@ -97,10 +274,13 @@ export default function TodayPage() {
       qc.setQueryData<DailyLog>(["daily", date], data);
       toast.success("Latihan ditambahkan");
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      qc.setQueryData(["daily", date], context?.previousLog);
+      context?.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
       toast.error("Gagal menambahkan");
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["daily", date] });
       refreshProgressCaches();
     },
   });
@@ -109,8 +289,8 @@ export default function TodayPage() {
     toggleMutation.mutate({ id, current });
   };
 
-  const addExercises = (exerciseIds: string[], source: "plan" | "manual") => {
-    addMutation.mutate({ exerciseIds, source });
+  const addExercises = (exercises: Exercise[], source: "plan" | "manual") => {
+    addMutation.mutate({ exercises, source });
   };
 
   return (
@@ -226,15 +406,15 @@ export default function TodayPage() {
   );
 }
 
-function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (ids: string[]) => void }) {
+function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => void }) {
   const { data: plans } = useQuery<Plan[]>({
     queryKey: ["plans"],
     queryFn: () => fetch("/api/plans").then((r) => r.json()),
   });
 
   const handlePick = (plan: Plan) => {
-    const ids = plan.items?.map((i) => i.exerciseId) ?? [];
-    onPick(ids);
+    const exercises = plan.items?.flatMap((item) => item.exercise ? [item.exercise] : []) ?? [];
+    onPick(exercises);
   };
 
   return (
@@ -267,7 +447,7 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (ids:
   );
 }
 
-function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (ids: string[]) => void }) {
+function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: exercises } = useQuery<Exercise[]>({
@@ -283,7 +463,7 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
 
   const handleAdd = () => {
     if (selected.size === 0) return toast.error("Pilih minimal satu latihan");
-    onPick([...selected]);
+    onPick((exercises ?? []).filter((exercise) => selected.has(exercise.id)));
   };
 
   return (
