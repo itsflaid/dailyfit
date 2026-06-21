@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Dumbbell, CalendarCheck2, ListChecks, BarChart3 } from "lucide-react";
+import { Home, Dumbbell, CalendarCheck2, ListChecks, BarChart3, Timer } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -18,6 +18,7 @@ const NAV = [
   { to: "/exercises", label: "Exercise", icon: Dumbbell },
   { to: "/today", label: "Today", icon: CalendarCheck2 },
   { to: "/plans", label: "Plans", icon: ListChecks },
+  { to: "/timer", label: "Timer", icon: Timer },
   { to: "/stats", label: "Stats", icon: BarChart3 },
 ] as const;
 

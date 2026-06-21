@@ -20,6 +20,7 @@ export function MobileBottomNav() {
     to === "/" ? pathname === "/" : pathname.startsWith(to);
 
   const activeIndex = NAV.findIndex((item) => isActive(item.to));
+  const hasActiveItem = activeIndex >= 0;
 
   return (
     <div className="md:hidden fixed bottom-6 inset-x-5 z-30">
@@ -31,17 +32,19 @@ export function MobileBottomNav() {
         }}
       >
         <div className="grid grid-cols-5 relative px-1 py-1">
-          <motion.div
-            className="absolute top-1 bottom-1 rounded-2xl"
-            style={{
-              background: "#1a0a0a",
-              border: "1px solid #3d1010",
-              width: "calc(20% - 4px)",
-              marginLeft: "2px",
-            }}
-            animate={{ left: `calc(${activeIndex * 20}%)` }}
-            transition={{ type: "spring", stiffness: 350, damping: 35 }}
-          />
+          {hasActiveItem && (
+            <motion.div
+              className="absolute top-1 bottom-1 rounded-2xl"
+              style={{
+                background: "#1a0a0a",
+                border: "1px solid #3d1010",
+                width: "calc(20% - 4px)",
+                marginLeft: "2px",
+              }}
+              animate={{ left: `calc(${activeIndex * 20}%)` }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+            />
+          )}
 
           {NAV.map((item) => {
             const Icon = item.icon;
@@ -74,16 +77,18 @@ export function MobileBottomNav() {
             );
           })}
 
-          <motion.div
-            className="absolute bottom-1 h-[2px] rounded-full"
-            style={{
-              background: "#dc2626",
-              width: "calc(20% - 16px)",
-              marginLeft: "8px",
-            }}
-            animate={{ left: `calc(${activeIndex * 20}%)` }}
-            transition={{ type: "spring", stiffness: 350, damping: 35 }}
-          />
+          {hasActiveItem && (
+            <motion.div
+              className="absolute bottom-1 h-[2px] rounded-full"
+              style={{
+                background: "#dc2626",
+                width: "calc(20% - 16px)",
+                marginLeft: "8px",
+              }}
+              animate={{ left: `calc(${activeIndex * 20}%)` }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+            />
+          )}
         </div>
       </nav>
     </div>
