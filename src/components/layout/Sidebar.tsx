@@ -18,8 +18,8 @@ const NAV = [
   { to: "/exercises", label: "Exercise", icon: Dumbbell },
   { to: "/today", label: "Today", icon: CalendarCheck2 },
   { to: "/plans", label: "Plans", icon: ListChecks },
-  { to: "/timer", label: "Timer", icon: Timer },
   { to: "/stats", label: "Stats", icon: BarChart3 },
+  { to: "/timer", label: "Timer", icon: Timer },
 ] as const;
 
 export function Sidebar({ session, handleSignOut }: SidebarProps) {
