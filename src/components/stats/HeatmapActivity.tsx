@@ -3,6 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
+const BLAZE_THRESHOLD = 15;
+
 const LEVEL_COLORS = [
   "rgba(196,18,48,0.08)",
   "#fca5a5",
@@ -175,17 +177,19 @@ export function ActivityHeatmap() {
                   {week.map((date, di) => {
                     const key = formatKey(date);
                     const count = heatmapData?.[key] ?? 0;
+                    const isBlaze = count >= BLAZE_THRESHOLD;
                     const color = getColor(count);
                     const isToday = key === formatKey(new Date());
 
                     return (
                       <div
                         key={di}
+                        className={isBlaze ? "heatmap-blaze" : undefined}
                         style={{
                           width: CELL,
                           height: CELL,
                           borderRadius: 2,
-                          background: color,
+                          background: isBlaze ? undefined : color,
                           border: isToday
                             ? "1.5px solid #C41230"
                             : count === 0

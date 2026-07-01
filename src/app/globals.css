@@ -107,4 +107,27 @@
     background-repeat: no-repeat;
     animation: shimmer-sweep 1.6s ease-in-out infinite;
   }
+
+  @keyframes heatmap-blaze-shift {
+    0% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+
+  @keyframes heatmap-blaze-glow {
+    0%, 100% { box-shadow: 0 0 1px 0.5px rgba(255, 90, 31, 0.35); }
+    50% { box-shadow: 0 0 3px 1.5px rgba(255, 140, 0, 0.6); }
+  }
+
+  .heatmap-blaze {
+    background-image: linear-gradient(135deg, #ff5a1f, #ffb703, #c41230, #ff5a1f, #ffb703);
+    background-size: 300% 300%;
+    animation: heatmap-blaze-shift 2.2s linear infinite, heatmap-blaze-glow 2.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .heatmap-blaze {
+      animation: none;
+      background-position: 50% 50%;
+    }
+  }
 }
