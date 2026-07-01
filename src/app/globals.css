@@ -90,4 +90,21 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  @keyframes shimmer-sweep {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(196, 18, 48, 0.06) 50%,
+      transparent 100%
+    );
+    background-size: 400px 100%;
+    background-repeat: no-repeat;
+    animation: shimmer-sweep 1.6s ease-in-out infinite;
+  }
 }

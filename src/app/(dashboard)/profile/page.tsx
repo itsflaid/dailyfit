@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [name, setName] = useState(session?.user?.name ?? "");
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const initials = name
     .split(" ")
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => {
+    setSigningOut(true);
     await signOut({ redirect: false });
     router.push("/login");
   };
@@ -97,10 +99,11 @@ export default function ProfilePage() {
         <p className="text-sm text-muted-foreground">Anda akan keluar dari semua perangkat.</p>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-2 border border-primary-600 text-primary-600 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-50 transition"
+          disabled={signingOut}
+          className="flex items-center gap-2 border border-primary-600 text-primary-600 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-50 transition disabled:opacity-60"
         >
           <LogOut className="h-4 w-4" />
-          Keluar
+          {signingOut ? "Keluar..." : "Keluar"}
         </button>
       </div>
     </div>

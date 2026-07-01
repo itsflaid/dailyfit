@@ -15,6 +15,7 @@ export default function ExercisesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [filterCategory, setFilterCategory] = useState<ExerciseCategory | typeof ALL>(ALL);
   const [filterMuscle, setFilterMuscle] = useState<MuscleGroup | typeof ALL>(ALL);
 
@@ -34,7 +35,9 @@ export default function ExercisesPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    setDeleting(true);
     const res = await fetch(`/api/exercises/${deleteId}`, { method: "DELETE" });
+    setDeleting(false);
     setDeleteId(null);
     if (!res.ok) return toast.error("Gagal menghapus");
     toast.success("Latihan dihapus");
@@ -200,12 +203,13 @@ export default function ExercisesPage() {
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition"
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition disabled:opacity-60"
                 style={{ background: "#C41230" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#9B0E25")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#C41230")}
+                onMouseEnter={(e) => { if (!deleting) e.currentTarget.style.background = "#9B0E25"; }}
+                onMouseLeave={(e) => { if (!deleting) e.currentTarget.style.background = "#C41230"; }}
               >
-                Hapus
+                {deleting ? "Menghapus..." : "Hapus"}
               </button>
             </div>
           </div>

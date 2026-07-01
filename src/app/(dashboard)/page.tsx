@@ -10,7 +10,7 @@ export default function HomePage() {
   const { data: session } = useSession();
   const name = session?.user?.name
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ["stats"],
     queryFn: () => fetch("/api/stats").then((r) => r.json()),
   });
@@ -29,44 +29,63 @@ export default function HomePage() {
         <p className="text-red-100 text-sm mb-4">
           Tetap konsisten. Setiap repetisi adalah investasi untuk diri Anda.
         </p>
-        <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium">
-          <Flame className="h-4 w-4" />
-          Streak {stats?.streak ?? 0} hari
-        </div>
+        {isLoading ? (
+          <div className="inline-block h-7 w-32 rounded-full bg-white/15 animate-pulse" />
+        ) : (
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium">
+            <Flame className="h-4 w-4" />
+            Streak {stats.streak ?? 0} hari
+          </div>
+        )}
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border p-4 space-y-2 shadow-sm">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-            <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
-            Minggu Ini
+      {isLoading ? (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border p-4 space-y-3 shadow-sm">
+            <div className="h-3 w-20 rounded bg-slate-100 animate-pulse" />
+            <div className="h-8 w-24 rounded bg-slate-100 animate-pulse" />
+            <div className="h-1.5 w-full rounded-full bg-slate-100 animate-pulse" />
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-slate-900">{stats?.completedWeek ?? 0}</span>
-            <span className="text-sm text-muted-foreground">/ {stats?.totalWeek ?? 0} selesai</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-primary-600 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="bg-white rounded-2xl border p-4 space-y-3 shadow-sm">
+            <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
+            <div className="h-8 w-16 rounded bg-slate-100 animate-pulse" />
+            <div className="h-3 w-full rounded bg-slate-100 animate-pulse" />
           </div>
         </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border p-4 space-y-2 shadow-sm">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
+              Minggu Ini
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-black text-slate-900">{stats.completedWeek ?? 0}</span>
+              <span className="text-sm text-muted-foreground">/ {stats.totalWeek ?? 0} selesai</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-primary-600 rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
 
-        <div className="bg-white rounded-2xl border p-4 space-y-2 shadow-sm">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-            <Flame className="h-3.5 w-3.5 text-primary-600" />
-            Streak Saat Ini
+          <div className="bg-white rounded-2xl border p-4 space-y-2 shadow-sm">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <Flame className="h-3.5 w-3.5 text-primary-600" />
+              Streak Saat Ini
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-black text-slate-900">{stats.streak ?? 0}</span>
+              <span className="text-sm text-muted-foreground">hari berturut</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Centang minimal satu latihan setiap hari untuk menjaga streak.
+            </p>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-slate-900">{stats?.streak ?? 0}</span>
-            <span className="text-sm text-muted-foreground">hari berturut</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Centang minimal satu latihan setiap hari untuk menjaga streak.
-          </p>
         </div>
-      </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-4">
         <Link

@@ -354,31 +354,35 @@ export default function TodayPage() {
             return (
             <div
               key={item.id}
-              className={`bg-white rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
-                item.isChecked ? "opacity-70" : ""
-              }`}
+              className={`rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
+                isPending ? "bg-off animate-shimmer" : "bg-white"
+              } ${item.isChecked ? "opacity-70" : ""}`}
             >
               <button
                 onClick={() => { if (!isPending) toggle(item.id, item.isChecked); }}
                 disabled={isPending}
                 className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
-                  item.isChecked
-                    ? "bg-primary-600 border-primary-600"
-                    : isPending
-                      ? "border-slate-200 opacity-50 cursor-not-allowed"
+                  isPending
+                    ? "border-primary-400 animate-pulse"
+                    : item.isChecked
+                      ? "bg-primary-600 border-primary-600"
                       : "border-slate-300 hover:border-primary-400"
                 }`}
               >
-                {item.isChecked && <Check className="h-3.5 w-3.5 text-white" />}
+                {item.isChecked && !isPending && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
 
               <div className="flex-1 min-w-0">
                 <div className={`font-medium text-ink ${item.isChecked ? "line-through text-muted-foreground" : ""}`}>
                   {item.exercise.name}
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {exerciseDetail(item.exercise)}
-                </div>
+                {isPending ? (
+                  <div className="text-xs text-primary-600/70 italic mt-0.5">Menambahkan gerakan…</div>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {exerciseDetail(item.exercise)}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5">
