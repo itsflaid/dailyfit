@@ -416,40 +416,75 @@ export default function TodayPage() {
   );
 }
 
-function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => void }) {
+function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => Promise<void> }) {
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+
   const { data: plans } = useQuery<Plan[]>({
     queryKey: ["plans"],
     queryFn: () => fetch("/api/plans").then((r) => r.json()),
   });
 
-  const handlePick = (plan: Plan) => {
+  const handlePick = async (plan: Plan) => {
+    if (submittingId) return;
     const exercises = plan.items?.flatMap((item) => item.exercise ? [item.exercise] : []) ?? [];
-    onPick(exercises);
+    setSubmittingId(plan.id);
+    try {
+      await onPick(exercises);
+    } catch {
+      setSubmittingId(null);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={() => !submittingId && onClose()}
+      />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <h2 className="text-lg font-bold text-ink">Pilih Rencana</h2>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
           {!plans?.length ? (
             <div className="text-sm text-muted-foreground text-center py-6">Belum ada rencana.</div>
-          ) : plans.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => handlePick(p)}
-              className="w-full text-left p-3 border rounded-xl hover:bg-off transition"
-            >
-              <div className="font-medium text-ink">{p.title}</div>
-              {p.description && (
-                <div className="text-xs text-muted-foreground mt-0.5">{p.description}</div>
-              )}
-              <div className="text-xs text-muted-foreground mt-1">{p.items?.length ?? 0} latihan</div>
-            </button>
-          ))}
+          ) : plans.map((p) => {
+            const isThisSubmitting = submittingId === p.id;
+            const isDimmed = submittingId !== null && !isThisSubmitting;
+            return (
+              <button
+                key={p.id}
+                onClick={() => handlePick(p)}
+                disabled={submittingId !== null}
+                className={`w-full text-left p-3 border rounded-xl transition ${
+                  isThisSubmitting ? "bg-primary-50 border-primary-200" : "hover:bg-off"
+                } ${isDimmed ? "opacity-40" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-ink">{p.title}</div>
+                    {p.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5">{p.description}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {isThisSubmitting ? "Menambahkan…" : `${p.items?.length ?? 0} latihan`}
+                    </div>
+                  </div>
+                  {isThisSubmitting && (
+                    <span className="flex gap-0.5 flex-shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary-600 animate-bounce [animation-delay:-0.3s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary-600 animate-bounce [animation-delay:-0.15s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary-600 animate-bounce" />
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <button onClick={onClose} className="w-full py-2.5 rounded-xl border text-sm font-medium text-slate-600 hover:bg-off transition">
+        <button
+          onClick={onClose}
+          disabled={submittingId !== null}
+          className="w-full py-2.5 rounded-xl border text-sm font-medium text-slate-600 hover:bg-off transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           Batal
         </button>
       </div>
@@ -457,8 +492,9 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exer
   );
 }
 
-function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => void }) {
+function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => Promise<void> }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
@@ -466,30 +502,45 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
   });
 
   const toggle = (id: string) => {
+    if (isSubmitting) return;
     const s = new Set(selected);
     s.has(id) ? s.delete(id) : s.add(id);
     setSelected(s);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (selected.size === 0) return toast.error("Pilih minimal satu latihan");
-    onPick((exercises ?? []).filter((exercise) => selected.has(exercise.id)));
+    setIsSubmitting(true);
+    try {
+      await onPick((exercises ?? []).filter((exercise) => selected.has(exercise.id)));
+    } catch {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={() => !isSubmitting && onClose()}
+      />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <h2 className="text-lg font-bold text-ink">Pilih Latihan</h2>
         <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {!exercises?.length ? (
             <div className="text-sm text-muted-foreground text-center py-6">Belum ada latihan di pustaka.</div>
           ) : exercises.map((ex) => (
-            <label key={ex.id} className="flex items-center gap-3 p-2.5 border rounded-xl cursor-pointer hover:bg-off transition">
+            <label
+              key={ex.id}
+              className={`flex items-center gap-3 p-2.5 border rounded-xl transition ${
+                isSubmitting ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-off"
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={selected.has(ex.id)}
                 onChange={() => toggle(ex.id)}
+                disabled={isSubmitting}
                 className="accent-primary-600"
               />
               <div className="flex-1 min-w-0">
@@ -500,14 +551,30 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
           ))}
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-slate-600 hover:bg-off transition">
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-slate-600 hover:bg-off transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Batal
           </button>
           <button
             onClick={handleAdd}
-            className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition"
+            disabled={isSubmitting}
+            className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition disabled:hover:bg-primary-600"
           >
-            Tambah ({selected.size})
+            {isSubmitting ? (
+              <span className="inline-flex items-center justify-center gap-1.5">
+                Menambahkan
+                <span className="flex gap-0.5">
+                  <span className="h-1 w-1 rounded-full bg-white animate-bounce [animation-delay:-0.3s]" />
+                  <span className="h-1 w-1 rounded-full bg-white animate-bounce [animation-delay:-0.15s]" />
+                  <span className="h-1 w-1 rounded-full bg-white animate-bounce" />
+                </span>
+              </span>
+            ) : (
+              `Tambah (${selected.size})`
+            )}
           </button>
         </div>
       </div>
