@@ -289,8 +289,8 @@ export default function TodayPage() {
     toggleMutation.mutate({ id, current });
   };
 
-  const addExercises = (exercises: Exercise[], source: "plan" | "manual") => {
-    addMutation.mutate({ exercises, source });
+  const addExercises = async (exercises: Exercise[], source: "plan" | "manual") => {
+    await addMutation.mutateAsync({ exercises, source });
   };
 
   return (
@@ -349,7 +349,9 @@ export default function TodayPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => (
+          {items.map((item) => {
+            const isPending = item.id.startsWith("optimistic-");
+            return (
             <div
               key={item.id}
               className={`bg-white rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
@@ -357,11 +359,14 @@ export default function TodayPage() {
               }`}
             >
               <button
-                onClick={() => toggle(item.id, item.isChecked)}
+                onClick={() => { if (!isPending) toggle(item.id, item.isChecked); }}
+                disabled={isPending}
                 className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
                   item.isChecked
                     ? "bg-primary-600 border-primary-600"
-                    : "border-slate-300 hover:border-primary-400"
+                    : isPending
+                      ? "border-slate-200 opacity-50 cursor-not-allowed"
+                      : "border-slate-300 hover:border-primary-400"
                 }`}
               >
                 {item.isChecked && <Check className="h-3.5 w-3.5 text-white" />}
@@ -385,21 +390,22 @@ export default function TodayPage() {
                 </span>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
       {planOpen && (
         <PickPlanModal
           onClose={() => setPlanOpen(false)}
-          onPick={(ids) => { addExercises(ids, "plan"); setPlanOpen(false); }}
+          onPick={async (ids) => { await addExercises(ids, "plan"); setPlanOpen(false); }}
         />
       )}
 
       {manualOpen && (
         <PickExerciseModal
           onClose={() => setManualOpen(false)}
-          onPick={(ids) => { addExercises(ids, "manual"); setManualOpen(false); }}
+          onPick={async (ids) => { await addExercises(ids, "manual"); setManualOpen(false); }}
         />
       )}
     </div>

@@ -43,16 +43,43 @@ export async function GET(req: Request) {
   );
   const daysInMonth = lastDayOfMonth.getDate();
 
-  // ─── Weekly (always relative to today) ────────────────────────────────────
+  // ─── Date boundaries ─────────────────────────────────────────────────────
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(today.getDate() - 6);
+  const streakStart = new Date(today);
+  streakStart.setDate(today.getDate() - 364);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
 
-  const weekLogs = await prisma.dailyLog.findMany({
-    where: { userId, date: { gte: sevenDaysAgo } },
-    include: { items: { include: { exercise: true } } },
-    orderBy: { date: "asc" },
-  });
+  // ─── Parallel queries ─────────────────────────────────────────────────────
+  const [weekLogs, monthLogs, activeLogs, exerciseGroups] = await Promise.all([
+    prisma.dailyLog.findMany({
+      where: { userId, date: { gte: sevenDaysAgo } },
+      include: { items: { include: { exercise: true } } },
+      orderBy: { date: "asc" },
+    }),
+    prisma.dailyLog.findMany({
+      where: { userId, date: { gte: firstDayOfMonth, lte: lastDayOfMonth } },
+      include: { items: { include: { exercise: true } } },
+      orderBy: { date: "asc" },
+    }),
+    prisma.dailyLog.findMany({
+      where: {
+        userId,
+        date: { gte: streakStart, lt: tomorrow },
+        items: { some: { isChecked: true } },
+      },
+      select: { date: true },
+    }),
+    prisma.dailyLogItem.groupBy({
+      by: ["exerciseId"],
+      where: { dailyLog: { userId }, isChecked: true },
+      _count: { exerciseId: true },
+      orderBy: { _count: { exerciseId: "desc" } },
+    }),
+  ]);
 
+  // ─── Weekly chart ─────────────────────────────────────────────────────────
   const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(sevenDaysAgo);
@@ -67,17 +94,12 @@ export async function GET(req: Request) {
     };
   });
 
+  const weekItems = weekLogs.flatMap((l) => l.items);
+  const totalWeek = weekItems.length;
+  const completedWeek = weekItems.filter((i) => i.isChecked).length;
+
   // ─── Monthly chart per category per day ───────────────────────────────────
   const CATEGORIES = ["STRENGTH", "CARDIO", "BALANCE", "FLEXIBILITY"] as const;
-
-  const monthLogs = await prisma.dailyLog.findMany({
-    where: {
-      userId,
-      date: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-    },
-    include: { items: { include: { exercise: true } } },
-    orderBy: { date: "asc" },
-  });
 
   const monthlyData = Array.from({ length: daysInMonth }, (_, i) => {
     const d = new Date(
@@ -87,7 +109,6 @@ export async function GET(req: Request) {
     );
     const isFuture = d > today;
 
-    // Future days → no data point (null entries = gap in chart)
     if (isFuture) return { date: i + 1 };
 
     const log = monthLogs.find(
@@ -104,7 +125,7 @@ export async function GET(req: Request) {
     return entry;
   });
 
-  // ─── Monthly summary ───────────────────────────────────────────────────────
+  // ─── Monthly summary ─────────────────────────────────────────────────────
   const monthItems = monthLogs.flatMap((l) => l.items);
   const totalMonth = monthItems.length;
   const completedMonth = monthItems.filter((i) => i.isChecked).length;
@@ -116,20 +137,7 @@ export async function GET(req: Request) {
     year: "numeric",
   });
 
-  // ─── Streak (always from today backwards) ─────────────────────────────────
-  const streakStart = new Date(today);
-  streakStart.setDate(today.getDate() - 364);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const activeLogs = await prisma.dailyLog.findMany({
-    where: {
-      userId,
-      date: { gte: streakStart, lt: tomorrow },
-      items: { some: { isChecked: true } },
-    },
-    select: { date: true },
-  });
+  // ─── Streak ──────────────────────────────────────────────────────────────
   const activeDates = new Set(
     activeLogs.map((log) => new Date(log.date).toDateString())
   );
@@ -150,37 +158,30 @@ export async function GET(req: Request) {
     previousStreak++;
   }
 
-  // ─── All-time exercises ────────────────────────────────────────────────────
-  const allItems = await prisma.dailyLogItem.findMany({
-    where: { dailyLog: { userId }, isChecked: true },
-    include: { exercise: true },
+  // ─── Top exercises & categories (via groupBy) ────────────────────────────
+  const exerciseIds = exerciseGroups.map((g) => g.exerciseId);
+  const exercisesMeta = await prisma.exercise.findMany({
+    where: { id: { in: exerciseIds } },
+    select: { id: true, name: true, category: true },
   });
+  const exerciseMetaMap = new Map(exercisesMeta.map((e) => [e.id, e]));
 
-  const exerciseCount: Record<string, { name: string; count: number }> = {};
-  for (const item of allItems) {
-    if (!exerciseCount[item.exerciseId]) {
-      exerciseCount[item.exerciseId] = { name: item.exercise.name, count: 0 };
-    }
-    exerciseCount[item.exerciseId].count++;
-  }
-  const allExercises = Object.values(exerciseCount).sort(
-    (a, b) => b.count - a.count
-  );
+  const allExercises = exerciseGroups.map((g) => ({
+    name: exerciseMetaMap.get(g.exerciseId)?.name ?? "Unknown",
+    count: g._count.exerciseId,
+  }));
   const topExercises = allExercises.slice(0, 5);
 
   const categoryCount: Record<string, number> = {};
-  for (const item of allItems) {
-    const cat = item.exercise.category;
-    categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
+  for (const g of exerciseGroups) {
+    const cat = exerciseMetaMap.get(g.exerciseId)?.category;
+    if (!cat) continue;
+    categoryCount[cat] = (categoryCount[cat] ?? 0) + g._count.exerciseId;
   }
   const categoryData = Object.entries(categoryCount).map(([name, value]) => ({
     name,
     value,
   }));
-
-  const weekItems = weekLogs.flatMap((l) => l.items);
-  const totalWeek = weekItems.length;
-  const completedWeek = weekItems.filter((i) => i.isChecked).length;
 
   return NextResponse.json(
     {

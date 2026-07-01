@@ -118,5 +118,7 @@ model DailyLogItem {
   dailyLog DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([dailyLogId])
+  @@index([exerciseId, isChecked])
   @@map("daily_log_items")
 }
