@@ -80,6 +80,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   const [audios, setAudios] = useState<TimerAudio[]>([FALLBACK_AUDIO]);
   const [audioSrc, setAudioSrc] = useState(FALLBACK_AUDIO.src);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
 
   const display = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
@@ -162,8 +163,37 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   useEffect(() => {
     if (!isRunning || hasAlarmed || secondsLeft > 0) return;
     setHasAlarmed(true);
-    audioRef.current?.play().catch(() => undefined);
   }, [hasAlarmed, isRunning, secondsLeft]);
+
+  // ─── Audio loop (repeat every 5s after alarm) ───────────────────────────
+  useEffect(() => {
+    if (!isRunning || !hasAlarmed) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const playAudio = () => {
+      audio.currentTime = 0;
+      audio.play().catch(() => undefined);
+    };
+
+    const onEnded = () => {
+      loopTimeoutRef.current = setTimeout(playAudio, 2500);
+    };
+
+    audio.addEventListener("ended", onEnded);
+    playAudio();
+
+    return () => {
+      audio.removeEventListener("ended", onEnded);
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current);
+        loopTimeoutRef.current = null;
+      }
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [isRunning, hasAlarmed]);
 
   // ─── Controls ────────────────────────────────────────────────────────────
   const startTimer = () => {
