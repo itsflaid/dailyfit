@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Dumbbell } from "lucide-react";
+import { Plus, Dumbbell, SlidersHorizontal, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { ExerciseModal } from "@/components/exercise/ExerciseModal";
@@ -18,6 +18,7 @@ export default function ExercisesPage() {
   const [deleting, setDeleting] = useState(false);
   const [filterCategory, setFilterCategory] = useState<ExerciseCategory | typeof ALL>(ALL);
   const [filterMuscle, setFilterMuscle] = useState<MuscleGroup | typeof ALL>(ALL);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const { data, isLoading } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
@@ -72,60 +73,159 @@ export default function ExercisesPage() {
 
       {/* Filters */}
       {data?.length ? (
-        <div className="space-y-3">
-          {/* Category filter */}
-          <div className="flex gap-2 flex-wrap">
-            <FilterChip
-              active={filterCategory === ALL}
-              onClick={() => setFilterCategory(ALL)}
-              label="All"
-            />
-            {(Object.entries(CATEGORY_LABEL) as [ExerciseCategory, string][]).map(([k, v]) => (
+        <>
+          {/* Desktop: inline chips */}
+          <div className="hidden md:block space-y-3">
+            <div className="flex gap-2 flex-wrap">
               <FilterChip
-                key={k}
-                active={filterCategory === k}
-                onClick={() => setFilterCategory(filterCategory === k ? ALL : k)}
-                label={v}
+                active={filterCategory === ALL}
+                onClick={() => setFilterCategory(ALL)}
+                label="All"
               />
-            ))}
-          </div>
+              {(Object.entries(CATEGORY_LABEL) as [ExerciseCategory, string][]).map(([k, v]) => (
+                <FilterChip
+                  key={k}
+                  active={filterCategory === k}
+                  onClick={() => setFilterCategory(filterCategory === k ? ALL : k)}
+                  label={v}
+                />
+              ))}
+            </div>
 
-          {/* Muscle group filter */}
-          <div className="flex gap-2 flex-wrap">
-            <FilterChip
-              active={filterMuscle === ALL}
-              onClick={() => setFilterMuscle(ALL)}
-              label="All Muscles"
-              secondary
-            />
-            {(Object.entries(MUSCLE_GROUP_LABEL) as [MuscleGroup, string][]).map(([k, v]) => (
+            <div className="flex gap-2 flex-wrap">
               <FilterChip
-                key={k}
-                active={filterMuscle === k}
-                onClick={() => setFilterMuscle(filterMuscle === k ? ALL : k)}
-                label={v}
+                active={filterMuscle === ALL}
+                onClick={() => setFilterMuscle(ALL)}
+                label="All Muscles"
                 secondary
               />
-            ))}
+              {(Object.entries(MUSCLE_GROUP_LABEL) as [MuscleGroup, string][]).map(([k, v]) => (
+                <FilterChip
+                  key={k}
+                  active={filterMuscle === k}
+                  onClick={() => setFilterMuscle(filterMuscle === k ? ALL : k)}
+                  label={v}
+                  secondary
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm" style={{ color: "#888" }}>
+                {filtered.length} of {data.length} exercises
+              </p>
+              {hasFilter && (
+                <button
+                  onClick={() => { setFilterCategory(ALL); setFilterMuscle(ALL); }}
+                  className="text-xs font-semibold transition"
+                  style={{ color: "#C41230" }}
+                >
+                  Reset filter
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Result count + reset */}
-          <div className="flex items-center justify-between">
+          {/* Mobile: filter button + result count */}
+          <div className="md:hidden flex items-center justify-between">
             <p className="text-sm" style={{ color: "#888" }}>
-              {filtered.length} dari {data.length} latihan
+              {filtered.length} of {data.length} exercises
             </p>
-            {hasFilter && (
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition"
+              style={{
+                background: hasFilter ? "#C41230" : "rgba(0,0,0,0.05)",
+                color: hasFilter ? "#fff" : "#888",
+              }}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filter
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {/* Mobile filter modal */}
+      {filterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setFilterOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold" style={{ color: "#0F0A0B" }}>Filter</h2>
               <button
-                onClick={() => { setFilterCategory(ALL); setFilterMuscle(ALL); }}
-                className="text-xs font-semibold transition"
-                style={{ color: "#C41230" }}
+                onClick={() => setFilterOpen(false)}
+                className="h-7 w-7 rounded-lg flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.05)" }}
               >
-                Reset filter
+                <X className="h-4 w-4" style={{ color: "#555" }} />
               </button>
-            )}
+            </div>
+
+            {/* Category */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Kategori</p>
+              <div className="flex gap-2 flex-wrap">
+                <FilterChip
+                  active={filterCategory === ALL}
+                  onClick={() => setFilterCategory(ALL)}
+                  label="All"
+                />
+                {(Object.entries(CATEGORY_LABEL) as [ExerciseCategory, string][]).map(([k, v]) => (
+                  <FilterChip
+                    key={k}
+                    active={filterCategory === k}
+                    onClick={() => setFilterCategory(filterCategory === k ? ALL : k)}
+                    label={v}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Muscle group */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Otot</p>
+              <div className="flex gap-2 flex-wrap">
+                <FilterChip
+                  active={filterMuscle === ALL}
+                  onClick={() => setFilterMuscle(ALL)}
+                  label="All Muscles"
+                  secondary
+                />
+                {(Object.entries(MUSCLE_GROUP_LABEL) as [MuscleGroup, string][]).map(([k, v]) => (
+                  <FilterChip
+                    key={k}
+                    active={filterMuscle === k}
+                    onClick={() => setFilterMuscle(filterMuscle === k ? ALL : k)}
+                    label={v}
+                    secondary
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              {hasFilter && (
+                <button
+                  onClick={() => { setFilterCategory(ALL); setFilterMuscle(ALL); }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                  style={{ border: "1.5px solid rgba(0,0,0,0.1)", color: "#555" }}
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => setFilterOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition"
+                style={{ background: "#C41230" }}
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Content */}
       {isLoading ? (
