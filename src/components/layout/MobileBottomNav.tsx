@@ -37,7 +37,6 @@ export function MobileBottomNav() {
               className="absolute top-1 bottom-1 rounded-2xl"
               style={{
                 background: "#1a0a0a",
-                border: "1px solid #3d1010",
                 width: "calc(20% - 4px)",
                 marginLeft: "2px",
               }}
