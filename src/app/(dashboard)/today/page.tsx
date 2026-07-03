@@ -2,10 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { Plus, ListChecks, CalendarCheck2, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { formatDateLabel, getTodayDate } from "@/lib/utils";
-import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type Plan } from "@/types";
+import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type ExerciseCategory, type Plan } from "@/types";
 
 interface StatsData {
   streak: number;
@@ -492,14 +492,24 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exer
   );
 }
 
+const ALL = "ALL";
+
 function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => Promise<void> }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<ExerciseCategory | typeof ALL>(ALL);
 
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
     queryFn: () => fetch("/api/exercises").then((r) => r.json()),
   });
+
+  const filtered = useMemo(() => {
+    if (!exercises) return [];
+    return filterCategory === ALL
+      ? exercises
+      : exercises.filter((ex) => ex.category === filterCategory);
+  }, [exercises, filterCategory]);
 
   const toggle = (id: string) => {
     if (isSubmitting) return;
@@ -526,10 +536,40 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
       />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <h2 className="text-lg font-bold text-ink">Pilih Latihan</h2>
+
+        {/* Filter chips */}
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setFilterCategory(ALL)}
+            className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition"
+            style={{
+              background: filterCategory === ALL ? "#C41230" : "rgba(0,0,0,0.05)",
+              color: filterCategory === ALL ? "#fff" : "#888",
+            }}
+          >
+            All
+          </button>
+          {(Object.entries(CATEGORY_LABEL) as [ExerciseCategory, string][]).map(([k, v]) => (
+            <button
+              key={k}
+              onClick={() => setFilterCategory(filterCategory === k ? ALL : k)}
+              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition"
+              style={{
+                background: filterCategory === k ? "#C41230" : "rgba(0,0,0,0.05)",
+                color: filterCategory === k ? "#fff" : "#888",
+              }}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {!exercises?.length ? (
             <div className="text-sm text-muted-foreground text-center py-6">Belum ada latihan di pustaka.</div>
-          ) : exercises.map((ex) => (
+          ) : !filtered.length ? (
+            <div className="text-sm text-muted-foreground text-center py-6">Tidak ada latihan dengan filter ini.</div>
+          ) : filtered.map((ex) => (
             <label
               key={ex.id}
               className={`flex items-center gap-3 p-2.5 border rounded-xl transition ${
