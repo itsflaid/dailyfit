@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, type Variants } from "framer-motion";
 import { StatCards } from "@/components/stats/StatCard";
 import { WeeklyChart } from "@/components/stats/WeeklyChart";
@@ -52,6 +52,7 @@ export default function StatsPage() {
       fetch(`/api/stats?month=${selectedMonth}`, { cache: "no-store" }).then(
         (r) => r.json()
       ),
+    placeholderData: keepPreviousData,
     refetchOnMount: "always",
   });
 
