@@ -61,20 +61,20 @@ export interface DailyLogItem {
 }
 
 export const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
-  STRENGTH: "Kekuatan",
-  CARDIO: "Kardio",
-  BALANCE: "Keseimbangan",
-  FLEXIBILITY: "Fleksibilitas",
+  STRENGTH: "Strength",
+  CARDIO: "Cardio",
+  BALANCE: "Balance",
+  FLEXIBILITY: "Flexibility",
 };
 
 export const MUSCLE_GROUP_LABEL: Record<MuscleGroup, string> = {
-  CHEST: "Dada",
-  BACK: "Punggung",
-  SHOULDERS: "Bahu",
-  BICEPS: "Bisep",
-  TRICEPS: "Trisep",
+  CHEST: "Chest",
+  BACK: "Back",
+  SHOULDERS: "Shoulders",
+  BICEPS: "Biceps",
+  TRICEPS: "Triceps",
   CORE: "Core",
-  LEGS: "Kaki",
+  LEGS: "Legs",
   FULL_BODY: "Full Body",
 };
 

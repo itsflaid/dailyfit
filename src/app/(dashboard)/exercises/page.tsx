@@ -78,7 +78,7 @@ export default function ExercisesPage() {
             <FilterChip
               active={filterCategory === ALL}
               onClick={() => setFilterCategory(ALL)}
-              label="Semua"
+              label="All"
             />
             {(Object.entries(CATEGORY_LABEL) as [ExerciseCategory, string][]).map(([k, v]) => (
               <FilterChip
@@ -95,7 +95,7 @@ export default function ExercisesPage() {
             <FilterChip
               active={filterMuscle === ALL}
               onClick={() => setFilterMuscle(ALL)}
-              label="Semua Otot"
+              label="All Muscles"
               secondary
             />
             {(Object.entries(MUSCLE_GROUP_LABEL) as [MuscleGroup, string][]).map(([k, v]) => (

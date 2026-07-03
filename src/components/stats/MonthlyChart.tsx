@@ -18,10 +18,10 @@ interface Props {
 }
 
 const CATEGORIES = [
-  { key: "STRENGTH", label: "Kekuatan", color: "#C41230" },
-  { key: "CARDIO", label: "Kardio", color: "#ea580c" },
-  { key: "BALANCE", label: "Keseimbangan", color: "#2563eb" },
-  { key: "FLEXIBILITY", label: "Fleksibilitas", color: "#16a34a" },
+  { key: "STRENGTH", label: "Strength", color: "#C41230" },
+  { key: "CARDIO", label: "Cardio", color: "#ea580c" },
+  { key: "BALANCE", label: "Balance", color: "#2563eb" },
+  { key: "FLEXIBILITY", label: "Flexibility", color: "#16a34a" },
 ];
 
 function shiftMonth(ym: string, delta: number): string {
