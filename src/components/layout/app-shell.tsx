@@ -7,6 +7,7 @@ import { Flame } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { MobileTopbar } from "./MobileTopbar";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { TimerAudioProvider } from "./TimerAudioProvider";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -16,6 +17,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     await signOut({ redirect: false });
     router.push("/login");
   };
+
+  const userKey = session?.user?.email ?? session?.user?.name ?? "guest";
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -44,7 +47,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="flex-1 pb-28 md:pb-0">
           <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
-            {children}
+            <TimerAudioProvider userKey={userKey}>
+              {children}
+            </TimerAudioProvider>
           </div>
         </main>
 

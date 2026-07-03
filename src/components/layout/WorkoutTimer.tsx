@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, RefreshCw, Square, Timer } from "lucide-react";
 
 const FALLBACK_AUDIO: TimerAudio = {
@@ -79,8 +79,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   const [hasAlarmed, setHasAlarmed] = useState(false);
   const [audios, setAudios] = useState<TimerAudio[]>([FALLBACK_AUDIO]);
   const [audioSrc, setAudioSrc] = useState(FALLBACK_AUDIO.src);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
 
   const display = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
@@ -165,36 +163,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     setHasAlarmed(true);
   }, [hasAlarmed, isRunning, secondsLeft]);
 
-  // ─── Audio loop (repeat every 5s after alarm) ───────────────────────────
-  useEffect(() => {
-    if (!isRunning || !hasAlarmed) return;
-
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const playAudio = () => {
-      audio.currentTime = 0;
-      audio.play().catch(() => undefined);
-    };
-
-    const onEnded = () => {
-      loopTimeoutRef.current = setTimeout(playAudio, 2500);
-    };
-
-    audio.addEventListener("ended", onEnded);
-    playAudio();
-
-    return () => {
-      audio.removeEventListener("ended", onEnded);
-      if (loopTimeoutRef.current) {
-        clearTimeout(loopTimeoutRef.current);
-        loopTimeoutRef.current = null;
-      }
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, [isRunning, hasAlarmed]);
-
   // ─── Controls ────────────────────────────────────────────────────────────
   const startTimer = () => {
     setDeadline(Date.now() + secondsLeft * 1000);
@@ -205,10 +173,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     setSecondsLeft(getSecondsLeft(deadline, secondsLeft));
     setDeadline(null);
     setIsRunning(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
   };
 
   const resetTimer = () => {
@@ -216,10 +180,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     setDeadline(null);
     setIsRunning(false);
     setHasAlarmed(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
   };
 
   const handleDurationChange = (value: string) => {
@@ -233,10 +193,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
 
   const handleAudioChange = (src: string) => {
     setAudioSrc(src);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
   };
 
   // ─── Conditional classes (NO transition on bg/text — instant switch) ──────
@@ -256,8 +212,6 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
 
   return (
     <section className={rootCls}>
-      <audio ref={audioRef} src={audioSrc} preload="auto" />
-
       <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-2xl flex-col items-center justify-center gap-6 text-center">
 
         {/* ── Badge ── */}
