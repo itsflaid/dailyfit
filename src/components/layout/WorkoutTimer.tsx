@@ -93,7 +93,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   const [presetName, setPresetName] = useState("");
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
   const presetStorageKey = `${PRESET_STORAGE_PREFIX}:${userKey ?? "guest"}`;
-  const { triggerAlarm, stopAlarm } = useTimerAudio();
+  const { triggerAlarm, stopAlarm, isAlarming } = useTimerAudio();
 
   const display = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
   const inputValue = useMemo(() => toTimerInput(duration), [duration]);
@@ -202,10 +202,10 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   useEffect(() => {
     if (isRunning && hasAlarmed) {
       triggerAlarm(audioSrc);
-    } else {
+    } else if (isAlarming) {
       stopAlarm();
     }
-  }, [isRunning, hasAlarmed, audioSrc, triggerAlarm, stopAlarm]);
+  }, [isRunning, hasAlarmed, audioSrc, triggerAlarm, stopAlarm, isAlarming]);
 
   // ─── Presets ──────────────────────────────────────────────────────────────
   const savePreset = () => {
