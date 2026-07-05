@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, type Variants } from "framer-motion";
+import { toast } from "sonner";
+import { FileDown } from "lucide-react";
 import { StatCards } from "@/components/stats/StatCard";
 import { WeeklyChart } from "@/components/stats/WeeklyChart";
 import { MonthlyChart } from "@/components/stats/MonthlyChart";
@@ -46,6 +48,26 @@ function getInitialMonth(): string {
 
 export default function StatsPage() {
   const [selectedMonth, setSelectedMonth] = useState(getInitialMonth);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch("/api/reports/weekly");
+      if (!res.ok) throw new Error("Gagal membuat laporan");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dailyfit-laporan-mingguan-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Gagal mengekspor laporan, coba lagi.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const { data: stats, isLoading } = useQuery<StatsData>({
     queryKey: ["stats", selectedMonth],
     queryFn: () =>
@@ -77,19 +99,29 @@ export default function StatsPage() {
       initial="hidden"
       animate="show"
     >
-      <motion.div variants={cardVariants}>
-        <p
-          className="text-[0.72rem] font-semibold tracking-[2.5px] uppercase mb-1"
-          style={{ color: "#C41230" }}
+      <motion.div variants={cardVariants} className="flex items-start justify-between gap-4">
+        <div>
+          <p
+            className="text-[0.72rem] font-semibold tracking-[2.5px] uppercase mb-1"
+            style={{ color: "#C41230" }}
+          >
+            Progress
+          </p>
+          <h1
+            className="font-display text-4xl md:text-5xl"
+            style={{ color: "#0F0A0B" }}
+          >
+            Statistik
+          </h1>
+        </div>
+        <button
+          onClick={handleExportPdf}
+          disabled={isExporting}
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition disabled:opacity-60 shrink-0 mt-1"
         >
-          Progress
-        </p>
-        <h1
-          className="font-display text-4xl md:text-5xl"
-          style={{ color: "#0F0A0B" }}
-        >
-          Statistik
-        </h1>
+          <FileDown className="h-4 w-4" />
+          {isExporting ? "Menyiapkan PDF..." : "Export Laporan Mingguan"}
+        </button>
       </motion.div>
 
       <motion.div variants={cardVariants}>
