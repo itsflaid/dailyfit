@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, RefreshCw, Square, Timer } from "lucide-react";
+import { useTimerAudio } from "./TimerAudioProvider";
 
 const FALLBACK_AUDIO: TimerAudio = {
   fileName: "timer.mp3",
@@ -25,6 +26,15 @@ type StoredTimer = {
   hasAlarmed: boolean;
   audioSrc?: string;
 };
+
+type TimerPreset = {
+  id: string;
+  name: string;
+  duration: number;
+  audioSrc: string;
+};
+
+const PRESET_STORAGE_PREFIX = "dailyfit-timer-presets";
 
 type WorkoutTimerProps = {
   userKey?: string | null;
@@ -79,7 +89,11 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   const [hasAlarmed, setHasAlarmed] = useState(false);
   const [audios, setAudios] = useState<TimerAudio[]>([FALLBACK_AUDIO]);
   const [audioSrc, setAudioSrc] = useState(FALLBACK_AUDIO.src);
+  const [presets, setPresets] = useState<TimerPreset[]>([]);
+  const [presetName, setPresetName] = useState("");
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
+  const presetStorageKey = `${PRESET_STORAGE_PREFIX}:${userKey ?? "guest"}`;
+  const { triggerAlarm, stopAlarm } = useTimerAudio();
 
   const display = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
   const inputValue = useMemo(() => toTimerInput(duration), [duration]);
@@ -148,6 +162,16 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
   }, [audioSrc, deadline, duration, hasAlarmed, isRunning, secondsLeft, storageKey]);
 
+  // ─── Load presets ──────────────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(presetStorageKey);
+      if (saved) setPresets(JSON.parse(saved));
+    } catch {
+      window.localStorage.removeItem(presetStorageKey);
+    }
+  }, [presetStorageKey]);
+
   // ─── Tick ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isRunning) return;
@@ -157,11 +181,59 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     return () => window.clearInterval(id);
   }, [deadline, isRunning, secondsLeft]);
 
-  // ─── Alarm ───────────────────────────────────────────────────────────────
+  // ─── Alarm — presisi ke deadline, bukan ikut ritme tick 1 detik ──────────
   useEffect(() => {
-    if (!isRunning || hasAlarmed || secondsLeft > 0) return;
-    setHasAlarmed(true);
-  }, [hasAlarmed, isRunning, secondsLeft]);
+    if (!isRunning || hasAlarmed || deadline === null) return;
+    const msLeft = deadline - Date.now();
+
+    if (msLeft <= 0) {
+      setHasAlarmed(true);
+      return;
+    }
+
+    const id = window.setTimeout(() => {
+      setHasAlarmed(true);
+    }, msLeft);
+
+    return () => window.clearTimeout(id);
+  }, [deadline, hasAlarmed, isRunning]);
+
+  // ─── Sync status alarm ke context secara instan ──────────────────────────
+  useEffect(() => {
+    if (isRunning && hasAlarmed) {
+      triggerAlarm(audioSrc);
+    } else {
+      stopAlarm();
+    }
+  }, [isRunning, hasAlarmed, audioSrc, triggerAlarm, stopAlarm]);
+
+  // ─── Presets ──────────────────────────────────────────────────────────────
+  const savePreset = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    const next: TimerPreset[] = [
+      ...presets,
+      { id: `${Date.now()}`, name, duration, audioSrc },
+    ];
+    setPresets(next);
+    window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
+    setPresetName("");
+  };
+
+  const applyPreset = (preset: TimerPreset) => {
+    setDuration(preset.duration);
+    setSecondsLeft(preset.duration);
+    setAudioSrc(preset.audioSrc);
+    setDeadline(null);
+    setIsRunning(false);
+    setHasAlarmed(false);
+  };
+
+  const deletePreset = (id: string) => {
+    const next = presets.filter((p) => p.id !== id);
+    setPresets(next);
+    window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
+  };
 
   // ─── Controls ────────────────────────────────────────────────────────────
   const startTimer = () => {
@@ -276,6 +348,64 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
               : "border-gray-100 bg-white shadow-md"
           }`}
         >
+          {/* ── Preset ── */}
+          <div className={`mb-4 pb-4 border-b ${isOvertime ? "border-white/15" : "border-gray-100"}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isOvertime ? "text-white/70" : "text-gray-400"}`}>
+              Preset
+            </p>
+
+            {presets.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {presets.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium ${
+                      isOvertime ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <button type="button" onClick={() => applyPreset(p)} className="hover:underline">
+                      {p.name} · {formatTime(p.duration)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deletePreset(p.id)}
+                      aria-label={`Hapus preset ${p.name}`}
+                      className={`h-4 w-4 rounded-full flex items-center justify-center ${
+                        isOvertime ? "hover:bg-white/20" : "hover:bg-gray-200"
+                      }`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="Nama preset baru"
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${
+                  isOvertime
+                    ? "border-white/20 bg-white text-gray-950 focus:border-white"
+                    : "border-gray-200 bg-gray-50 text-gray-900 focus:border-red-400"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={savePreset}
+                disabled={!presetName.trim()}
+                className={`px-4 rounded-xl text-sm font-semibold transition disabled:opacity-40 ${
+                  isOvertime ? "bg-white text-red-600" : "bg-red-600 text-white"
+                }`}
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             {/* Duration input */}
             <label

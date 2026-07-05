@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
 
 const FALLBACK_AUDIO: TimerAudio = { fileName: "timer.mp3", name: "timer", src: "/audio/timer.mp3" };
@@ -23,11 +24,13 @@ type StoredTimer = {
 
 type TimerAudioContextType = {
   stopAlarm: () => void;
+  triggerAlarm: (audioSrc: string) => void;
   isAlarming: boolean;
 };
 
 const TimerAudioContext = createContext<TimerAudioContextType>({
   stopAlarm: () => {},
+  triggerAlarm: () => {},
   isAlarming: false,
 });
 
@@ -36,6 +39,8 @@ export function useTimerAudio() {
 }
 
 export function TimerAudioProvider({ children, userKey }: { children: ReactNode; userKey: string }) {
+  const pathname = usePathname();
+  const hideBanner = pathname?.startsWith("/timer");
   const [isAlarming, setIsAlarming] = useState(false);
   const [audioSrc, setAudioSrc] = useState(FALLBACK_AUDIO.src);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -59,7 +64,7 @@ export function TimerAudioProvider({ children, userKey }: { children: ReactNode;
       }
     };
     tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 200);
     return () => clearInterval(id);
   }, [storageKey]);
 
@@ -102,11 +107,16 @@ export function TimerAudioProvider({ children, userKey }: { children: ReactNode;
     setIsAlarming(false);
   }, [storageKey]);
 
+  const triggerAlarm = useCallback((src: string) => {
+    setAudioSrc(src);
+    setIsAlarming(true);
+  }, []);
+
   return (
-    <TimerAudioContext.Provider value={{ stopAlarm, isAlarming }}>
+    <TimerAudioContext.Provider value={{ stopAlarm, triggerAlarm, isAlarming }}>
       <audio ref={audioRef} src={audioSrc} preload="auto" />
       {children}
-      {isAlarming && (
+      {isAlarming && !hideBanner && (
         <div className="fixed bottom-24 inset-x-5 z-50 md:bottom-6">
           <div className="bg-red-600 text-white rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
