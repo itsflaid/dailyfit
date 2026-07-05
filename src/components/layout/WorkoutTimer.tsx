@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Pause, Play, RefreshCw, Square, Timer } from "lucide-react";
+import { ChevronDown, Pause, Play, Plus, Pencil, RefreshCw, Square, Timer, Trash2 } from "lucide-react";
 import { useTimerAudio } from "./TimerAudioProvider";
 
 const FALLBACK_AUDIO: TimerAudio = {
@@ -31,7 +31,6 @@ type TimerPreset = {
   id: string;
   name: string;
   duration: number;
-  audioSrc: string;
 };
 
 const PRESET_STORAGE_PREFIX = "dailyfit-timer-presets";
@@ -90,9 +89,16 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   const [audios, setAudios] = useState<TimerAudio[]>([FALLBACK_AUDIO]);
   const [audioSrc, setAudioSrc] = useState(FALLBACK_AUDIO.src);
   const [presets, setPresets] = useState<TimerPreset[]>([]);
-  const [presetName, setPresetName] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [isPresetPanelOpen, setIsPresetPanelOpen] = useState(false);
+  const [presetModal, setPresetModal] = useState<
+    { mode: "add" } | { mode: "edit"; id: string } | null
+  >(null);
+  const [presetModalName, setPresetModalName] = useState("");
+  const [presetModalDuration, setPresetModalDuration] = useState(DEFAULT_SECONDS);
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
   const presetStorageKey = `${PRESET_STORAGE_PREFIX}:${userKey ?? "guest"}`;
+  const selectedPreset = presets.find((p) => p.id === selectedPresetId) ?? null;
   const { triggerAlarm, stopAlarm, isAlarming } = useTimerAudio();
 
   const display = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
@@ -208,31 +214,58 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   }, [isRunning, hasAlarmed, audioSrc, triggerAlarm, stopAlarm, isAlarming]);
 
   // ─── Presets ──────────────────────────────────────────────────────────────
-  const savePreset = () => {
-    const name = presetName.trim();
+  const openAddPresetModal = () => {
+    setPresetModalName("");
+    setPresetModalDuration(duration);
+    setPresetModal({ mode: "add" });
+    setIsPresetPanelOpen(false);
+  };
+
+  const openEditPresetModal = (preset: TimerPreset) => {
+    setPresetModalName(preset.name);
+    setPresetModalDuration(preset.duration);
+    setPresetModal({ mode: "edit", id: preset.id });
+    setIsPresetPanelOpen(false);
+  };
+
+  const closePresetModal = () => setPresetModal(null);
+
+  const savePresetModal = () => {
+    const name = presetModalName.trim();
     if (!name) return;
-    const next: TimerPreset[] = [
-      ...presets,
-      { id: `${Date.now()}`, name, duration, audioSrc },
-    ];
-    setPresets(next);
-    window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
-    setPresetName("");
+
+    if (presetModal?.mode === "edit") {
+      const next = presets.map((p) =>
+        p.id === presetModal.id ? { ...p, name, duration: presetModalDuration } : p
+      );
+      setPresets(next);
+      window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
+    } else {
+      const next: TimerPreset[] = [
+        ...presets,
+        { id: `${Date.now()}`, name, duration: presetModalDuration },
+      ];
+      setPresets(next);
+      window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
+    }
+    closePresetModal();
   };
 
   const applyPreset = (preset: TimerPreset) => {
     setDuration(preset.duration);
     setSecondsLeft(preset.duration);
-    setAudioSrc(preset.audioSrc);
     setDeadline(null);
     setIsRunning(false);
     setHasAlarmed(false);
+    setSelectedPresetId(preset.id);
+    setIsPresetPanelOpen(false);
   };
 
   const deletePreset = (id: string) => {
     const next = presets.filter((p) => p.id !== id);
     setPresets(next);
     window.localStorage.setItem(presetStorageKey, JSON.stringify(next));
+    if (selectedPresetId === id) setSelectedPresetId(null);
   };
 
   // ─── Controls ────────────────────────────────────────────────────────────
@@ -261,6 +294,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     setDeadline(null);
     setIsRunning(false);
     setHasAlarmed(false);
+    setSelectedPresetId(null);
   };
 
   const handleAudioChange = (src: string) => {
