@@ -382,62 +382,89 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
               : "border-gray-100 bg-white shadow-md"
           }`}
         >
-          {/* ── Preset ── */}
-          <div className={`mb-4 pb-4 border-b ${isOvertime ? "border-white/15" : "border-gray-100"}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isOvertime ? "text-white/70" : "text-gray-400"}`}>
-              Preset
-            </p>
+          {/* ── Preset trigger ── */}
+          <div className="relative mb-3">
+            <button
+              type="button"
+              onClick={() => setIsPresetPanelOpen((v) => !v)}
+              className={`w-full flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                isOvertime
+                  ? "border-white/20 bg-white/10 text-white"
+                  : "border-gray-200 bg-gray-50 text-gray-900"
+              }`}
+            >
+              <span>{selectedPreset ? `Preset: ${selectedPreset.name}` : "Preset"}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${isPresetPanelOpen ? "rotate-180" : ""}`} />
+            </button>
 
-            {presets.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {presets.map((p) => (
-                  <div
-                    key={p.id}
-                    className={`flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium ${
-                      isOvertime ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    <button type="button" onClick={() => applyPreset(p)} className="hover:underline">
-                      {p.name} · {formatTime(p.duration)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deletePreset(p.id)}
-                      aria-label={`Hapus preset ${p.name}`}
-                      className={`h-4 w-4 rounded-full flex items-center justify-center ${
-                        isOvertime ? "hover:bg-white/20" : "hover:bg-gray-200"
-                      }`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                placeholder="Nama preset baru"
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm outline-none transition-colors ${
-                  isOvertime
-                    ? "border-white/20 bg-white text-gray-950 focus:border-white"
-                    : "border-gray-200 bg-gray-50 text-gray-900 focus:border-red-400"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={savePreset}
-                disabled={!presetName.trim()}
-                className={`px-4 rounded-xl text-sm font-semibold transition disabled:opacity-40 ${
-                  isOvertime ? "bg-white text-red-600" : "bg-red-600 text-white"
+            {isPresetPanelOpen && (
+              <div
+                className={`absolute z-20 mt-1.5 w-full rounded-xl border shadow-lg overflow-hidden ${
+                  isOvertime ? "border-white/20 bg-gray-900" : "border-gray-200 bg-white"
                 }`}
               >
-                Simpan
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={openAddPresetModal}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-left border-b ${
+                    isOvertime
+                      ? "border-white/10 text-white hover:bg-white/10"
+                      : "border-gray-100 text-red-600 hover:bg-red-50"
+                  }`}
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah Preset
+                </button>
+
+                {presets.length === 0 ? (
+                  <div className={`px-3 py-3 text-xs ${isOvertime ? "text-white/50" : "text-gray-400"}`}>
+                    Belum ada preset tersimpan.
+                  </div>
+                ) : (
+                  presets.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-sm cursor-pointer ${
+                        isOvertime ? "text-white hover:bg-white/10" : "text-gray-900 hover:bg-gray-50"
+                      }`}
+                      onClick={() => applyPreset(p)}
+                    >
+                      <span className="font-medium">
+                        {p.name} <span className="opacity-60 font-normal">· {formatTime(p.duration)}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditPresetModal(p);
+                          }}
+                          aria-label={`Edit preset ${p.name}`}
+                          className={`h-7 w-7 rounded-full flex items-center justify-center ${
+                            isOvertime ? "hover:bg-white/20" : "hover:bg-gray-200"
+                          }`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePreset(p.id);
+                          }}
+                          aria-label={`Hapus preset ${p.name}`}
+                          className={`h-7 w-7 rounded-full flex items-center justify-center ${
+                            isOvertime ? "hover:bg-white/20" : "hover:bg-gray-200"
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -532,6 +559,57 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
       
         </div>
       </div>
+
+      {presetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closePresetModal} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <h2 className="text-base font-bold text-gray-900">
+              {presetModal.mode === "edit" ? "Edit Preset" : "Tambah Preset"}
+            </h2>
+
+            <label className="block text-xs font-semibold text-gray-500">
+              Nama Preset
+              <input
+                type="text"
+                value={presetModalName}
+                onChange={(e) => setPresetModalName(e.target.value)}
+                placeholder="misal: Sprint 30 detik"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-900 outline-none focus:border-red-400"
+              />
+            </label>
+
+            <label className="block text-xs font-semibold text-gray-500">
+              Durasi
+              <input
+                type="time"
+                step="1"
+                value={toTimerInput(presetModalDuration)}
+                onChange={(e) => setPresetModalDuration(parseTimerInput(e.target.value))}
+                className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-red-400"
+              />
+            </label>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closePresetModal}
+                className="flex-1 py-2.5 rounded-xl border text-sm font-medium text-slate-600 hover:bg-gray-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={savePresetModal}
+                disabled={!presetModalName.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition disabled:opacity-40"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
