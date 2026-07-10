@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { motion, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { toast } from "sonner";
-import { FileDown } from "lucide-react";
+import { FileDown, Calendar, CalendarDays, X } from "lucide-react";
 import { StatCards } from "@/components/stats/StatCard";
 import { WeeklyChart } from "@/components/stats/WeeklyChart";
 import { MonthlyChart } from "@/components/stats/MonthlyChart";
@@ -48,24 +48,26 @@ function getInitialMonth(): string {
 
 export default function StatsPage() {
   const [selectedMonth, setSelectedMonth] = useState(getInitialMonth);
-  const [isExporting, setIsExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState<"mingguan" | "bulanan" | null>(null);
 
-  const handleExportPdf = async () => {
-    setIsExporting(true);
+  const handleExportPdf = async (type: "mingguan" | "bulanan") => {
+    setExporting(type);
+    setShowExportModal(false);
     try {
-      const res = await fetch("/api/reports/weekly");
+      const res = await fetch(`/api/reports/${type}`);
       if (!res.ok) throw new Error("Gagal membuat laporan");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dailyfit-laporan-mingguan-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.download = `dailyfit-laporan-${type}-${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       toast.error("Gagal mengekspor laporan, coba lagi.");
     } finally {
-      setIsExporting(false);
+      setExporting(null);
     }
   };
   const { data: stats, isLoading } = useQuery<StatsData>({
@@ -99,7 +101,7 @@ export default function StatsPage() {
       initial="hidden"
       animate="show"
     >
-      <motion.div variants={cardVariants} className="flex items-start justify-between gap-4">
+      <motion.div variants={cardVariants} className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
         <div>
           <p
             className="text-[0.72rem] font-semibold tracking-[2.5px] uppercase mb-1"
@@ -115,14 +117,85 @@ export default function StatsPage() {
           </h1>
         </div>
         <button
-          onClick={handleExportPdf}
-          disabled={isExporting}
-          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition disabled:opacity-60 shrink-0 mt-1"
+          onClick={() => setShowExportModal(true)}
+          disabled={exporting !== null}
+          className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition disabled:opacity-60 shrink-0"
         >
           <FileDown className="h-4 w-4" />
-          {isExporting ? "Menyiapkan PDF..." : "Export Laporan Mingguan"}
+          {exporting ? "Menyiapkan PDF..." : "Laporan"}
         </button>
       </motion.div>
+
+      {/* Export modal */}
+      <AnimatePresence>
+        {showExportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowExportModal(false)}
+            />
+            <motion.div
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1.5px solid rgba(0,0,0,0.07)" }}>
+                <h3 className="font-display text-2xl" style={{ color: "#0F0A0B" }}>Export Laporan</h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="h-8 w-8 rounded-xl flex items-center justify-center transition"
+                  style={{ background: "rgba(0,0,0,0.05)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+                >
+                  <X className="h-4 w-4" style={{ color: "#555" }} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3">
+                <button
+                  onClick={() => handleExportPdf("mingguan")}
+                  disabled={exporting !== null}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl transition disabled:opacity-50"
+                  style={{ background: "rgba(196,18,48,0.06)", border: "1.5px solid rgba(196,18,48,0.15)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(196,18,48,0.1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(196,18,48,0.06)")}
+                >
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#C41230" }}>
+                    <Calendar className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold" style={{ color: "#0F0A0B" }}>Laporan Mingguan</div>
+                    <div className="text-xs mt-0.5" style={{ color: "#888" }}>7 hari terakhir</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleExportPdf("bulanan")}
+                  disabled={exporting !== null}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl transition disabled:opacity-50"
+                  style={{ background: "rgba(0,0,0,0.03)", border: "1.5px solid rgba(0,0,0,0.07)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.06)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.03)")}
+                >
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#0F0A0B" }}>
+                    <CalendarDays className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold" style={{ color: "#0F0A0B" }}>Laporan Bulanan</div>
+                    <div className="text-xs mt-0.5" style={{ color: "#888" }}>Bulan ini</div>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <motion.div variants={cardVariants}>
         <StatCards
