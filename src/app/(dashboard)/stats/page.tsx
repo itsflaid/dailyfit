@@ -193,7 +193,7 @@ export default function StatsPage() {
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-semibold" style={{ color: "#0F0A0B" }}>Laporan Bulanan</div>
-                    <div className="text-xs mt-0.5" style={{ color: "#888" }}>Bulan ini</div>
+                    <div className="text-xs mt-0.5" style={{ color: "#888" }}>30 hari terakhir</div>
                   </div>
                 </button>
               </div>
