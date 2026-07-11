@@ -51,11 +51,16 @@ export default function StatsPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState<"mingguan" | "bulanan" | null>(null);
 
+  const REPORT_ENDPOINT: Record<"mingguan" | "bulanan", string> = {
+    mingguan: "weekly",
+    bulanan: "monthly",
+  };
+
   const handleExportPdf = async (type: "mingguan" | "bulanan") => {
     setExporting(type);
     setShowExportModal(false);
     try {
-      const res = await fetch(`/api/reports/${type}`);
+      const res = await fetch(`/api/reports/${REPORT_ENDPOINT[type]}`);
       if (!res.ok) throw new Error("Gagal membuat laporan");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

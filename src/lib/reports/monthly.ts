@@ -43,10 +43,10 @@ function startOfDay(d: Date) {
   return copy;
 }
 
-function getMonthDateRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = startOfDay(now);
+function getRolling30DateRange() {
+  const end = startOfDay(new Date());
+  const start = new Date(end);
+  start.setDate(start.getDate() - 29);
   return { start, end };
 }
 
@@ -58,7 +58,8 @@ function formatPeriodLabel(from: Date, to: Date) {
 }
 
 export async function getMonthlyReportData(userId: string, userName: string): Promise<MonthlyReportData> {
-  const { start, end } = getMonthDateRange();
+  const { start, end } = getRolling30DateRange();
+  const DAY_WINDOW = 30;
 
   const logs = await prisma.dailyLog.findMany({
     where: { userId, date: { gte: start, lte: end } },
@@ -83,11 +84,9 @@ export async function getMonthlyReportData(userId: string, userName: string): Pr
   let daysTrained = 0;
   let totalExercises = 0;
 
-  const dayCount = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-  for (let i = 0; i < dayCount; i++) {
-    const date = new Date(start);
-    date.setDate(date.getDate() + i);
+  for (let i = 0; i < DAY_WINDOW; i++) {
+    const date = new Date(end);
+    date.setDate(date.getDate() - i);
     const log = logsByDateKey.get(startOfDay(date).toISOString());
 
     const grouped = new Map<string, MonthlyReportExerciseLine>();

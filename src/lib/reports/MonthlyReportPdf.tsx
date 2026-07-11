@@ -68,6 +68,7 @@ export function MonthlyReportPdf({ data }: { data: MonthlyReportData }) {
           <Text style={styles.headerBrand}>DAILYFIT</Text>
           <Text style={styles.headerTitle}>Laporan Progres Bulanan</Text>
           <Text style={styles.headerPeriod}>{data.periodLabel}</Text>
+          <Text style={{ fontSize: 9, color: "#FFFFFF", opacity: 0.75, marginTop: 2 }}>30 hari terakhir</Text>
         </View>
 
         <View style={styles.headerMetaRow}>
