@@ -605,7 +605,6 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
           >
             {isSubmitting ? (
               <span className="inline-flex items-center justify-center gap-1.5">
-                Menambahkan
                 <span className="flex gap-0.5">
                   <span className="h-1 w-1 rounded-full bg-white animate-bounce [animation-delay:-0.3s]" />
                   <span className="h-1 w-1 rounded-full bg-white animate-bounce [animation-delay:-0.15s]" />
