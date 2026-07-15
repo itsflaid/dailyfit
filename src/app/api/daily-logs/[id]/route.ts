@@ -28,3 +28,23 @@ export async function PATCH(
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+
+  const item = await prisma.dailyLogItem.findFirst({
+    where: { id, dailyLog: { userId: session.user.id } },
+  });
+
+  if (!item) return NextResponse.json({ message: "Tidak ditemukan" }, { status: 404 });
+
+  await prisma.dailyLogItem.delete({ where: { id } });
+
+  return NextResponse.json({ success: true });
+}
