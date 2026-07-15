@@ -1,8 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { Plus, ListChecks, CalendarCheck2, Check } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Plus, ListChecks, CalendarCheck2, Check, Trash2 } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { formatDateLabel, getTodayDate } from "@/lib/utils";
 import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type ExerciseCategory, type Plan } from "@/types";
@@ -158,10 +159,91 @@ export default function TodayPage() {
   const total = items.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
+  const prefersReduced = useReducedMotion();
   const refreshProgressCaches = () => {
     qc.invalidateQueries({ queryKey: ["stats"] });
     qc.invalidateQueries({ queryKey: ["heatmap"] });
   };
+
+  const pendingDeletes = useRef<Map<string, {
+    timeoutId: ReturnType<typeof setTimeout>;
+    previousLog?: DailyLog;
+    previousStats: StatsSnapshot;
+    previousHeatmap?: Record<string, number>;
+  }>>(new Map());
+
+  const handleDelete = (item: DailyLog["items"][0]) => {
+    Promise.all([
+      qc.cancelQueries({ queryKey: ["daily", date] }),
+      qc.cancelQueries({ queryKey: ["stats"] }),
+      qc.cancelQueries({ queryKey: ["heatmap"] }),
+    ]);
+
+    const previousLog = qc.getQueryData<DailyLog>(["daily", date]);
+    const previousStats = qc.getQueriesData<StatsData>({ queryKey: ["stats"] });
+    const previousHeatmap = qc.getQueryData<Record<string, number>>(["heatmap"]);
+    const checkedBefore = previousLog?.items.filter((i) => i.isChecked).length ?? 0;
+
+    qc.setQueryData<DailyLog>(["daily", date], (old) => {
+      if (!old) return old;
+      return { ...old, items: old.items.filter((i) => i.id !== item.id) };
+    });
+
+    const completedDelta = item.isChecked ? -1 : 0;
+    updateCachedStats(qc, date, (stats, includesMonth) =>
+      applyStatsDelta(stats, item.exercise, completedDelta, -1, date, includesMonth, checkedBefore)
+    );
+
+    if (completedDelta !== 0) {
+      qc.setQueryData<Record<string, number>>(
+        ["heatmap"],
+        (old) => applyHeatmapDelta(old, date, completedDelta)
+      );
+    }
+
+    const timeoutId = setTimeout(() => commitDelete(item.id), 4000);
+    pendingDeletes.current.set(item.id, { timeoutId, previousLog, previousStats, previousHeatmap });
+
+    toast.success("Latihan dihapus", {
+      action: { label: "Urungkan", onClick: () => undoDelete(item.id) },
+      duration: 4000,
+    });
+  };
+
+  const undoDelete = (id: string) => {
+    const entry = pendingDeletes.current.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timeoutId);
+    qc.setQueryData(["daily", date], entry.previousLog);
+    entry.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
+    qc.setQueryData(["heatmap"], entry.previousHeatmap);
+    pendingDeletes.current.delete(id);
+  };
+
+  const commitDelete = async (id: string) => {
+    const entry = pendingDeletes.current.get(id);
+    const res = await fetch(`/api/daily-logs/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      if (entry) {
+        qc.setQueryData(["daily", date], entry.previousLog);
+        entry.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
+        qc.setQueryData(["heatmap"], entry.previousHeatmap);
+      }
+      toast.error("Gagal menghapus");
+    }
+    pendingDeletes.current.delete(id);
+    refreshProgressCaches();
+  };
+
+  useEffect(() => {
+    return () => {
+      pendingDeletes.current.forEach((entry, id) => {
+        clearTimeout(entry.timeoutId);
+        fetch(`/api/daily-logs/${id}`, { method: "DELETE" }).catch(() => {});
+      });
+      pendingDeletes.current.clear();
+    };
+  }, []);
 
   const toggleMutation = useMutation({
     mutationKey: ["daily-progress"],
@@ -378,53 +460,67 @@ export default function TodayPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((item) => {
-            const isPending = item.id.startsWith("optimistic-");
-            return (
-            <div
-              key={item.id}
-              className={`rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
-                isPending ? "bg-off animate-shimmer" : "bg-white"
-              } ${item.isChecked ? "opacity-70" : ""}`}
-            >
-              <button
-                onClick={() => { if (!isPending) toggle(item.id, item.isChecked); }}
-                disabled={isPending}
-                className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
-                  isPending
-                    ? "border-primary-400 animate-pulse"
-                    : item.isChecked
-                      ? "bg-primary-600 border-primary-600"
-                      : "border-slate-300 hover:border-primary-400"
-                }`}
+          <AnimatePresence>
+            {items.map((item) => {
+              const isPending = item.id.startsWith("optimistic-");
+              return (
+              <motion.div
+                key={item.id}
+                layout
+                initial={prefersReduced ? false : { opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 24 }}
+                transition={{ duration: 0.2 }}
+                className={`rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
+                  isPending ? "bg-off animate-shimmer" : "bg-white"
+                } ${item.isChecked ? "opacity-70" : ""}`}
               >
-                {item.isChecked && !isPending && <Check className="h-3.5 w-3.5 text-white" />}
-              </button>
+                <button
+                  onClick={() => { if (!isPending) toggle(item.id, item.isChecked); }}
+                  disabled={isPending}
+                  className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
+                    isPending
+                      ? "border-primary-400 animate-pulse"
+                      : item.isChecked
+                        ? "bg-primary-600 border-primary-600"
+                        : "border-slate-300 hover:border-primary-400"
+                  }`}
+                >
+                  {item.isChecked && !isPending && <Check className="h-3.5 w-3.5 text-white" />}
+                </button>
 
-              <div className="flex-1 min-w-0">
-                <div className={`font-medium text-ink ${item.isChecked ? "line-through text-muted-foreground" : ""}`}>
-                  {item.exercise.name}
-                </div>
-                {isPending ? (
-                  <div className="text-xs text-primary-600/70 italic mt-0.5">Menambahkan gerakan…</div>
-                ) : (
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {exerciseDetail(item.exercise)}
+                <div className="flex-1 min-w-0">
+                  <div className={`font-medium text-ink ${item.isChecked ? "line-through text-muted-foreground" : ""}`}>
+                    {item.exercise.name}
                   </div>
-                )}
-              </div>
+                  {isPending ? (
+                    <div className="text-xs text-primary-600/70 italic mt-0.5">Menambahkan gerakan…</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {exerciseDetail(item.exercise)}
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-muted-foreground capitalize hidden sm:block">
-                  {item.source === "plan" ? "rencana" : "manual"}
-                </span>
-                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border bg-off text-slate-600 border-slate-200 hidden sm:block">
-                  {CATEGORY_LABEL[item.exercise.category]}
-                </span>
-              </div>
-            </div>
-          );
-          })}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground capitalize hidden sm:block">
+                    {item.source === "plan" ? "rencana" : "manual"}
+                  </span>
+                  <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border bg-off text-slate-600 border-slate-200 hidden sm:block">
+                    {CATEGORY_LABEL[item.exercise.category]}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(item)}
+                    disabled={isPending}
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+            })}
+          </AnimatePresence>
         </div>
       )}
 
