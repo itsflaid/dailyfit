@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Dumbbell, SlidersHorizontal, X } from "lucide-react";
 import { useState, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ExerciseModal } from "@/components/exercise/ExerciseModal";
 import { ExerciseCard } from "@/components/exercise/ExerciseCard";
@@ -266,16 +267,19 @@ export default function ExercisesPage() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((ex) => (
-            <ExerciseCard
-              key={ex.id}
-              exercise={ex}
-              onEdit={(ex) => { setEditing(ex); setModalOpen(true); }}
-              onDelete={setDeleteId}
-            />
-          ))}
-        </div>
+        <AnimatePresence>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((ex, i) => (
+              <ExerciseCard
+                key={ex.id}
+                exercise={ex}
+                index={i}
+                onEdit={(ex) => { setEditing(ex); setModalOpen(true); }}
+                onDelete={setDeleteId}
+              />
+            ))}
+          </div>
+        </AnimatePresence>
       )}
 
       <ExerciseModal
