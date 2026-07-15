@@ -65,6 +65,82 @@ function updateCategoryCount(
   return next.filter((item) => item.value > 0);
 }
 
+function applyStatsDelta(
+  stats: StatsData,
+  exercise: { name: string; category: string },
+  completedDelta: number,
+  totalDelta: number,
+  date: string,
+  includesMonth: boolean,
+  checkedBefore?: number
+): StatsData {
+  const allExercises = updateExerciseCount(stats.allExercises, exercise.name, completedDelta);
+  const day = Number(date.slice(8, 10));
+  const monthlyData = includesMonth
+    ? stats.monthlyData.map((entry) =>
+        entry.date === day
+          ? {
+              ...entry,
+              [exercise.category]: Math.max(
+                0,
+                Number(entry[exercise.category] ?? 0) + completedDelta
+              ),
+            }
+          : entry
+      )
+    : stats.monthlyData;
+
+  return {
+    ...stats,
+    streak:
+      checkedBefore !== undefined && checkedBefore === 0 && completedDelta > 0
+        ? (stats.previousStreak ?? 0) + 1
+        : checkedBefore !== undefined && checkedBefore === 1 && completedDelta < 0
+          ? 0
+          : stats.streak,
+    completedWeek: Math.max(0, stats.completedWeek + completedDelta),
+    completedMonth: includesMonth
+      ? Math.max(0, stats.completedMonth + completedDelta)
+      : stats.completedMonth,
+    totalWeek: Math.max(0, stats.totalWeek + totalDelta),
+    totalMonth: includesMonth
+      ? Math.max(0, stats.totalMonth + totalDelta)
+      : stats.totalMonth,
+    activeDaysMonth: includesMonth
+      ? Math.max(
+          0,
+          stats.activeDaysMonth +
+            (checkedBefore !== undefined && checkedBefore === 0 && completedDelta > 0
+              ? 1
+              : checkedBefore !== undefined && checkedBefore === 1 && completedDelta < 0
+                ? -1
+                : 0)
+        )
+      : stats.activeDaysMonth,
+    weeklyData: stats.weeklyData.map((entry, index) =>
+      index === stats.weeklyData.length - 1
+        ? {
+            ...entry,
+            completed: Math.max(0, entry.completed + completedDelta),
+            total: Math.max(0, entry.total + totalDelta),
+          }
+        : entry
+    ),
+    monthlyData,
+    allExercises,
+    topExercises: allExercises.slice(0, 5),
+    categoryData: updateCategoryCount(stats.categoryData, exercise.category, completedDelta),
+  };
+}
+
+function applyHeatmapDelta(
+  heatmap: Record<string, number> | undefined,
+  date: string,
+  delta: number
+): Record<string, number> | undefined {
+  return heatmap ? { ...heatmap, [date]: Math.max(0, (heatmap[date] ?? 0) + delta) } : heatmap;
+}
+
 export default function TodayPage() {
   const qc = useQueryClient();
   const [planOpen, setPlanOpen] = useState(false);
@@ -110,7 +186,6 @@ export default function TodayPage() {
       const previousHeatmap = qc.getQueryData<Record<string, number>>(["heatmap"]);
       const item = previousLog?.items.find((entry) => entry.id === id);
       const checkedBefore = previousLog?.items.filter((entry) => entry.isChecked).length ?? 0;
-      const delta = current ? -1 : 1;
 
       qc.setQueryData<DailyLog>(["daily", date], (old) => {
         if (!old) return old;
@@ -123,68 +198,22 @@ export default function TodayPage() {
       });
 
       if (item) {
-        updateCachedStats(qc, date, (stats, includesMonth) => {
-          const allExercises = updateExerciseCount(
-            stats.allExercises,
-            item.exercise.name,
-            delta
-          );
-          const day = Number(date.slice(8, 10));
-          const monthlyData = includesMonth
-            ? stats.monthlyData.map((entry) =>
-                entry.date === day
-                  ? {
-                      ...entry,
-                      [item.exercise.category]: Math.max(
-                        0,
-                        Number(entry[item.exercise.category] ?? 0) + delta
-                      ),
-                    }
-                  : entry
-              )
-            : stats.monthlyData;
+        const completedDelta = current ? -1 : 1;
+        updateCachedStats(qc, date, (stats, includesMonth) =>
+          applyStatsDelta(
+            stats,
+            item.exercise,
+            completedDelta,
+            0,
+            date,
+            includesMonth,
+            checkedBefore
+          )
+        );
 
-          return {
-            ...stats,
-            streak:
-              checkedBefore === 0 && delta > 0
-                ? (stats.previousStreak ?? 0) + 1
-                : checkedBefore === 1 && delta < 0
-                  ? 0
-                  : stats.streak,
-            completedWeek: Math.max(0, stats.completedWeek + delta),
-            completedMonth: includesMonth
-              ? Math.max(0, stats.completedMonth + delta)
-              : stats.completedMonth,
-            activeDaysMonth: includesMonth
-              ? Math.max(
-                  0,
-                  stats.activeDaysMonth +
-                    (checkedBefore === 0 && delta > 0
-                      ? 1
-                      : checkedBefore === 1 && delta < 0
-                        ? -1
-                        : 0)
-                )
-              : stats.activeDaysMonth,
-            weeklyData: stats.weeklyData.map((entry, index) =>
-              index === stats.weeklyData.length - 1
-                ? { ...entry, completed: Math.max(0, entry.completed + delta) }
-                : entry
-            ),
-            monthlyData,
-            allExercises,
-            topExercises: allExercises.slice(0, 5),
-            categoryData: updateCategoryCount(
-              stats.categoryData,
-              item.exercise.category,
-              delta
-            ),
-          };
-        });
-
-        qc.setQueryData<Record<string, number>>(["heatmap"], (old) =>
-          old ? { ...old, [date]: Math.max(0, (old[date] ?? 0) + delta) } : old
+        qc.setQueryData<Record<string, number>>(
+          ["heatmap"],
+          (old) => applyHeatmapDelta(old, date, completedDelta)
         );
       }
 
