@@ -1,61 +1,7 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { MonthlyReportData } from "./monthly";
 import { CATEGORY_LABEL } from "./monthly";
-
-const CRIMSON = "#C41230";
-const INK = "#0F0A0B";
-const MUTED = "#8A8A8A";
-const OFF = "#F6F4F1";
-
-const styles = StyleSheet.create({
-  page: { padding: 0, fontSize: 10, color: INK, fontFamily: "Helvetica" },
-  content: { padding: 32 },
-  headerBanner: { backgroundColor: CRIMSON, paddingVertical: 28, paddingHorizontal: 32, marginBottom: 4 },
-  headerBrand: { fontSize: 10, fontWeight: 700, color: "#FFFFFF", letterSpacing: 2, marginBottom: 8, opacity: 0.85 },
-  headerTitle: { fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 6 },
-  headerPeriod: { fontSize: 11, color: "#FFFFFF", opacity: 0.9 },
-  headerMetaRow: { flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 32, paddingTop: 10, marginBottom: 8 },
-  headerMetaText: { fontSize: 8, color: MUTED },
-  divider: { height: 1, backgroundColor: "#E5E0DA", marginVertical: 14 },
-  dayHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  dayLabel: { fontSize: 12, fontWeight: 700, color: INK },
-  dayDate: { fontSize: 9, color: MUTED },
-  intensityBarTrack: { height: 3, backgroundColor: "#EFEAE3", borderRadius: 2, marginBottom: 8, marginTop: 2 },
-  intensityBarFill: { height: 3, backgroundColor: CRIMSON, borderRadius: 2 },
-  exerciseGrid: { flexDirection: "row", flexWrap: "wrap" },
-  exerciseLine1Col: { width: "100%", fontSize: 10, marginBottom: 3, flexDirection: "row" },
-  exerciseLine2Col: { width: "50%", fontSize: 10, marginBottom: 3, paddingRight: 8, flexDirection: "row" },
-  dot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 3, marginRight: 6 },
-  exerciseName: { color: INK },
-  exerciseAmount: { color: MUTED },
-  restDay: { fontSize: 10, color: MUTED, fontStyle: "italic", marginBottom: 8 },
-  dayBlock: { marginBottom: 16 },
-  summaryBox: { backgroundColor: OFF, borderRadius: 8, padding: 16, marginTop: 8 },
-  summaryTitle: { fontSize: 13, fontWeight: 700, color: INK, marginBottom: 10 },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  summaryLabel: { fontSize: 9, color: MUTED },
-  summaryValue: { fontSize: 11, fontWeight: 700, color: INK },
-  dotsRow: { flexDirection: "row", marginTop: 3 },
-  dayDot: { width: 8, height: 8, borderRadius: 4, marginRight: 4 },
-  categoryBarRow: { marginBottom: 6 },
-  categoryBarLabel: { fontSize: 8, color: MUTED, marginBottom: 2 },
-  categoryBarTrack: { height: 5, backgroundColor: "#EFEAE3", borderRadius: 3 },
-  categoryBarFill: { height: 5, backgroundColor: CRIMSON, borderRadius: 3 },
-  footer: { position: "absolute", bottom: 24, left: 32, right: 32, fontSize: 8, color: MUTED, textAlign: "center" },
-});
-
-const CATEGORY_COLOR: Record<string, string> = {
-  STRENGTH: "#C41230",
-  CARDIO: "#2563EB",
-  BALANCE: "#16A34A",
-  FLEXIBILITY: "#9333EA",
-};
-
-const WEEKDAY = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-
-function formatFullDate(d: Date) {
-  return `${WEEKDAY[d.getDay()]}, ${d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`;
-}
+import { styles, CRIMSON, CATEGORY_COLOR, CATEGORY_TINT, formatFullDate } from "./reportTheme";
 
 export function MonthlyReportPdf({ data }: { data: MonthlyReportData }) {
   const maxCount = Math.max(1, ...data.days.map((d) => d.totalCount));
