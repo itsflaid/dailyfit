@@ -26,44 +26,52 @@ export function MonthlyReportPdf({ data }: { data: MonthlyReportData }) {
         <View style={styles.content}>
         <View style={styles.divider} />
 
-        {data.days.map((day) => {
-          const useGrid = day.exercises.length > 4;
-          return (
-            <View key={day.dayNumber} style={styles.dayBlock} wrap>
-              <View style={styles.dayHeaderRow}>
-                <Text style={styles.dayLabel}>Hari {day.dayNumber}</Text>
-                <Text style={styles.dayDate}>{formatFullDate(day.date)}</Text>
-              </View>
-
-              {day.exercises.length > 0 && (
-                <View style={styles.intensityBarTrack}>
-                  <View
-                    style={[
-                      styles.intensityBarFill,
-                      { width: `${(day.totalCount / maxCount) * 100}%` },
-                    ]}
-                  />
-                </View>
-              )}
-
-              {day.exercises.length === 0 ? (
-                <Text style={styles.restDay}>Tidak ada latihan</Text>
-              ) : (
-                <View style={styles.exerciseGrid}>
-                  {day.exercises.map((ex, idx) => (
-                    <View key={idx} style={useGrid ? styles.exerciseLine2Col : styles.exerciseLine1Col}>
-                      <View style={[styles.dot, { backgroundColor: CATEGORY_COLOR[ex.category] }]} />
-                      <Text>
-                        <Text style={styles.exerciseName}>{ex.name}</Text>
-                        <Text style={styles.exerciseAmount}>{"  "}{ex.amount}{ex.unit === "x" ? "x" : " detik"}</Text>
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
+        {data.days.map((day) => (
+          <View key={day.dayNumber} style={styles.dayBlock} wrap>
+            <View style={styles.dayHeaderRow}>
+              <Text style={styles.dayLabel}>Hari {day.dayNumber}</Text>
+              <Text style={styles.dayDate}>{formatFullDate(day.date)}</Text>
             </View>
-          );
-        })}
+
+            {day.exercises.length > 0 && (
+              <View style={styles.intensityBarTrack}>
+                <View
+                  style={[
+                    styles.intensityBarFill,
+                    { width: `${(day.totalCount / maxCount) * 100}%` },
+                  ]}
+                />
+              </View>
+            )}
+
+            {day.exercises.length === 0 ? (
+              <Text style={styles.restDay}>Tidak ada latihan</Text>
+            ) : (
+              <View style={styles.tableWrap}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderCell, styles.colExercise]}>LATIHAN</Text>
+                  <Text style={[styles.tableHeaderCell, styles.colCategory]}>KATEGORI</Text>
+                  <Text style={[styles.tableHeaderCell, styles.colAmount]}>JUMLAH</Text>
+                </View>
+                {day.exercises.map((ex, idx) => (
+                  <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                    <Text style={[styles.exerciseNameCell, styles.colExercise]}>{ex.name}</Text>
+                    <View style={styles.colCategory}>
+                      <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_TINT[ex.category] }]}>
+                        <Text style={[styles.categoryBadgeText, { color: CATEGORY_COLOR[ex.category] }]}>
+                          {CATEGORY_LABEL[ex.category]}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.amountCell, styles.colAmount]}>
+                      {ex.amount}{ex.unit === "x" ? "x" : " detik"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        ))}
 
         <View style={styles.divider} />
 
@@ -129,9 +137,7 @@ export function MonthlyReportPdf({ data }: { data: MonthlyReportData }) {
 
         </View>
 
-        <Text style={styles.footer} fixed>
-          Dibuat otomatis oleh DailyFit — laporan ini mencerminkan aktivitas checklist yang tercatat di aplikasi.
-        </Text>
+        <Text style={styles.footer} fixed render={({ pageNumber, totalPages }) => `Halaman ${pageNumber} dari ${totalPages}`} />
       </Page>
     </Document>
   );

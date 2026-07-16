@@ -1,5 +1,18 @@
-import { StyleSheet } from "@react-pdf/renderer";
+import { StyleSheet, Font } from "@react-pdf/renderer";
 import { ExerciseCategory } from "@prisma/client";
+import path from "path";
+
+Font.register({
+  family: "DM Sans",
+  fonts: [
+    { src: path.join(process.cwd(), "public/fonts/DMSansVariable.ttf"), fontWeight: 400 },
+    { src: path.join(process.cwd(), "public/fonts/DMSansVariable.ttf"), fontWeight: 700 },
+  ],
+});
+Font.register({
+  family: "Barlow Condensed",
+  fonts: [{ src: path.join(process.cwd(), "public/fonts/BarlowCondensed-Bold.ttf"), fontWeight: 700 }],
+});
 
 export const CRIMSON = "#C41230";
 export const INK = "#0F0A0B";
@@ -27,11 +40,11 @@ export function formatFullDate(d: Date) {
 }
 
 export const styles = StyleSheet.create({
-  page: { padding: 0, fontSize: 10, color: INK, fontFamily: "Helvetica" },
+  page: { padding: 0, fontSize: 10, color: INK, fontFamily: "DM Sans" },
   content: { padding: 32, paddingBottom: 48 },
   headerBanner: { backgroundColor: CRIMSON, paddingVertical: 28, paddingHorizontal: 32, marginBottom: 4 },
   headerBrand: { fontSize: 10, fontWeight: 700, color: "#FFFFFF", letterSpacing: 2, marginBottom: 8, opacity: 0.85 },
-  headerTitle: { fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 6 },
+  headerTitle: { fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 6, fontFamily: "Barlow Condensed" },
   headerPeriod: { fontSize: 11, color: "#FFFFFF", opacity: 0.9 },
   headerMetaRow: { flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 32, paddingTop: 10, marginBottom: 8 },
   headerMetaText: { fontSize: 8, color: MUTED },
@@ -43,7 +56,7 @@ export const styles = StyleSheet.create({
   intensityBarFill: { height: 3, backgroundColor: CRIMSON, borderRadius: 2 },
   restDay: { fontSize: 10, color: MUTED, fontStyle: "italic", marginBottom: 8 },
   dayBlock: { marginBottom: 16 },
-  summaryBox: { backgroundColor: OFF, borderRadius: 8, padding: 16, marginTop: 8 },
+  summaryBox: { backgroundColor: OFF, borderRadius: 8, padding: 16, marginTop: 8, borderWidth: 1, borderColor: "#E5E0DA" },
   summaryTitle: { fontSize: 13, fontWeight: 700, color: INK, marginBottom: 10 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   summaryLabel: { fontSize: 9, color: MUTED },
