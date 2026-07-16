@@ -53,7 +53,7 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
                   <Text style={[styles.tableHeaderCell, styles.colAmount]}>JUMLAH</Text>
                 </View>
                 {day.exercises.map((ex, idx) => (
-                  <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                  <View key={idx} style={[styles.tableRow, ...(idx % 2 === 1 ? [styles.tableRowAlt] : [])]}>
                     <Text style={[styles.exerciseNameCell, styles.colExercise]}>{ex.name}</Text>
                     <View style={styles.colCategory}>
                       <View style={[styles.categoryBadge, { backgroundColor: CATEGORY_TINT[ex.category] }]}>

@@ -27,10 +27,6 @@ export default function ExercisesPage() {
     queryFn: () => fetch("/api/exercises").then((r) => r.json()),
   });
 
-  useEffect(() => {
-    AOS.refreshHard();
-  }, [filtered.length]);
-
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.filter((ex) => {
@@ -39,6 +35,10 @@ export default function ExercisesPage() {
       return catOk && musOk;
     });
   }, [data, filterCategory, filterMuscle]);
+
+  useEffect(() => {
+    AOS.refreshHard();
+  }, [filtered.length]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
