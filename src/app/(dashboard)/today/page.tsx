@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { Plus, ListChecks, CalendarCheck2, Check, Trash2 } from "lucide-react";
+import { Plus, ListChecks, CalendarCheck2, Check, Trash2, Undo2 } from "lucide-react";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
@@ -204,8 +204,11 @@ export default function TodayPage() {
     const timeoutId = setTimeout(() => commitDelete(item.id), 4000);
     pendingDeletes.current.set(item.id, { timeoutId, previousLog, previousStats, previousHeatmap });
 
-    toast.success("Latihan dihapus", {
-      action: { label: "Urungkan", onClick: () => undoDelete(item.id) },
+    toast.error("Latihan dihapus", {
+      action: {
+        label: <Undo2 className="h-4 w-4" />,
+        onClick: () => undoDelete(item.id),
+      },
       duration: 4000,
     });
   };
