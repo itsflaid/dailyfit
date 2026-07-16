@@ -2,7 +2,8 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Dumbbell, SlidersHorizontal, X } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import AOS from "aos";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ExerciseModal } from "@/components/exercise/ExerciseModal";
@@ -25,6 +26,10 @@ export default function ExercisesPage() {
     queryKey: ["exercises"],
     queryFn: () => fetch("/api/exercises").then((r) => r.json()),
   });
+
+  useEffect(() => {
+    AOS.refreshHard();
+  }, [filtered.length]);
 
   const filtered = useMemo(() => {
     if (!data) return [];

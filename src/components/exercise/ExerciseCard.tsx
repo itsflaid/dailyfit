@@ -1,7 +1,6 @@
 "use client";
 
 import { Pencil, Trash2, Dumbbell, Timer, Flame } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 import { CATEGORY_LABEL, MUSCLE_GROUP_LABEL, exerciseDetail, type Exercise, type ExerciseCategory } from "@/types";
 
 const CATEGORY_ACCENT: Record<ExerciseCategory, { bg: string; dot: string; text: string }> = {
@@ -19,17 +18,13 @@ interface Props {
 }
 
 export function ExerciseCard({ exercise: ex, index, onEdit, onDelete }: Props) {
-  const prefersReduced = useReducedMotion();
   const accent = CATEGORY_ACCENT[ex.category];
   const isTime = ex.type === "TIME_BASED";
 
   return (
-    <motion.div
-      layout
-      initial={prefersReduced ? false : { opacity: 0, x: -24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 24 }}
-      transition={{ duration: 0.3, delay: index * 0.04, ease: "easeOut" }}
+    <div
+      data-aos="fade-right"
+      data-aos-delay={Math.min(index * 50, 300)}
       className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex"
     >
       {/* Left accent bar */}
@@ -102,6 +97,6 @@ export function ExerciseCard({ exercise: ex, index, onEdit, onDelete }: Props) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, ListChecks } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import AOS from "aos";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import { PlanCard } from "@/components/plan/PlanCard";
@@ -20,6 +21,10 @@ export default function PlansPage() {
     queryKey: ["plans"],
     queryFn: () => fetch("/api/plans").then((r) => r.json()),
   });
+
+  useEffect(() => {
+    AOS.refreshHard();
+  }, [plans?.length]);
 
   const handleDelete = async () => {
     if (!deleteId) return;

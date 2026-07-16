@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Trash2, ChevronDown, Pencil, Dumbbell, Timer } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { exerciseDetail, CATEGORY_LABEL, type Plan, type ExerciseCategory } from "@/types";
 
 const CATEGORY_DOT: Record<ExerciseCategory, string> = {
@@ -21,16 +21,14 @@ interface Props {
 
 export function PlanCard({ plan, index, onDelete, onEdit }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const prefersReduced = useReducedMotion();
   const count = plan.items?.length ?? 0;
 
   return (
     <motion.div
-      layout
-      initial={prefersReduced ? false : { opacity: 0, x: -24 }}
-      animate={{ opacity: 1, x: 0 }}
+      data-aos="fade-right"
+      data-aos-delay={Math.min(index * 50, 300)}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.3, delay: index * 0.05, ease: "easeOut" }}
+      transition={{ duration: 0.25 }}
       className="rounded-2xl overflow-hidden"
       style={{ border: "1.5px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
     >
