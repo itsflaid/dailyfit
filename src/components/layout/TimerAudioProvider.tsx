@@ -53,7 +53,8 @@ export function TimerAudioProvider({ children, userKey }: { children: ReactNode;
         const saved = localStorage.getItem(storageKey);
         if (!saved) { setIsAlarming(false); return; }
         const parsed = JSON.parse(saved) as StoredTimer;
-        if (parsed.isRunning && parsed.hasAlarmed) {
+        const isPastDeadline = parsed.deadline !== null && Date.now() >= parsed.deadline;
+        if (parsed.isRunning && (parsed.hasAlarmed || isPastDeadline)) {
           setIsAlarming(true);
           if (parsed.audioSrc) setAudioSrc(parsed.audioSrc);
         } else {
