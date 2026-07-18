@@ -46,7 +46,7 @@ export function Sidebar({ session, handleSignOut }: SidebarProps) {
   };
 
   return (
-    <aside className="hidden md:flex md:w-72 lg:w-80 flex-col bg-white border-r border-gray-100 shadow-sm">
+    <aside className="hidden md:flex md:w-72 lg:w-80 md:sticky md:top-0 md:h-screen flex-col bg-white border-r border-gray-100 shadow-sm overflow-y-auto">
       {/* Logo */}
       <div className="flex h-20 items-center gap-3 px-8 border-b border-gray-100">
         <Image src={logo} alt="DailyFit Logo" className="h-12 w-auto" />

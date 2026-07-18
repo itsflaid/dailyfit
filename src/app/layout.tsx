@@ -40,7 +40,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${barlowCondensed.variable} ${dmSans.variable} antialiased`}>
         <Providers>
           {children}
-          <Toaster richColors position="top-right" />
+          <Toaster
+            richColors
+            position="top-right"
+            toastOptions={{
+              classNames: {
+                actionButton:
+                  "!bg-transparent !text-current !shadow-none !border-none hover:!bg-red-100",
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>
