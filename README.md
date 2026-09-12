@@ -61,9 +61,7 @@ Buka [http://localhost:3000](http://localhost:3000)
 - ✅ Sidebar desktop + Bottom nav mobile (5 item)
 - ✅ Profile di top bar mobile
 
-## Deploy ke Vercel
 
-1. Push ke GitHub
-2. Connect repo di vercel.com
-3. Tambahkan environment variables di Vercel dashboard
-4. Deploy!
+<p align="center">
+  <a href="https://flaid.my.id"> By Flaid</a>
+</p>
