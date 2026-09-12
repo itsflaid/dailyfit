@@ -62,6 +62,13 @@ Buka [http://localhost:3000](http://localhost:3000)
 - ✅ Profile di top bar mobile
 
 
+---
+
 <p align="center">
-  <a href="https://flaid.my.id"> By Flaid</a>
+  <img src="https://img.shields.io/badge/Portfolio-flaid.my.id-black?style=flat-square" alt="Portfolio" />
+  <a href="https://github.com/itsflaid"><img src="https://img.shields.io/badge/GitHub-itsflaid-black?style=flat-square&logo=github" alt="GitHub" /></a>
+</p>
+
+<p align="center">
+  Built with ☕ by <a href="https://flaid.my.id"><strong>Flaid</strong></a> — Full-stack Developer & Indie Builder
 </p>
