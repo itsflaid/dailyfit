@@ -1,13 +1,13 @@
 # DailyFit 🔥
 
-Tracker workout harian pribadi — Next.js 15, Prisma v6, NextAuth v5, Supabase PostgreSQL.
+Tracker workout harian pribadi — Next.js 16, Prisma v6, NextAuth v5, Neon PostgreSQL.
 
 ## Tech Stack
 
-- **Frontend + API**: Next.js 15 App Router
+- **Frontend + API**: Next.js 16 App Router
 - **Auth**: NextAuth v5 (Credentials)
 - **ORM**: Prisma v6
-- **Database**: Supabase PostgreSQL
+- **Database**: Neon PostgreSQL
 - **Styling**: Tailwind CSS
 - **Charts**: Recharts
 - **Notifications**: Sonner
@@ -25,12 +25,11 @@ npm install
 Copy `.env.example` ke `.env.local` dan isi:
 
 ```env
-DATABASE_URL="postgresql://postgres.xxxx:PASSWORD@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
-NEXTAUTH_SECRET="generate-dengan-openssl-rand-base64-32"
-NEXTAUTH_URL="http://localhost:3000"
+DATABASE_URL="postgresql://user:password@ep-xxxx.neon.tech/dbname?sslmode=require"
+AUTH_SECRET="generate-dengan-openssl-rand-base64-32"
 ```
 
-Generate `NEXTAUTH_SECRET`:
+Generate `AUTH_SECRET`:
 ```bash
 openssl rand -base64 32
 ```
