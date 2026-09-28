@@ -17,7 +17,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) return toast.error("Password minimal 6 karakter");
+    if (password.length < 8) return toast.error("Password minimal 8 karakter");
     setLoading(true);
 
     const res = await fetch("/api/auth/register", {
@@ -89,7 +89,7 @@ export default function RegisterPage() {
             type={showPass ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (min. 6 karakter)"
+            placeholder="Password (min. 8 karakter)"
             required
             className="w-full px-4 py-[14px] pr-11 rounded-[11px] text-[0.92rem] font-medium bg-white outline-none transition"
             style={inputStyle}
