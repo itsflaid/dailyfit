@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -65,6 +66,7 @@ model Exercise {
   planItems PlanItem[]
   logItems  DailyLogItem[]
 
+  @@index([userId, createdAt])
   @@map("exercises")
 }
 
@@ -79,6 +81,7 @@ model Plan {
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items PlanItem[]
 
+  @@index([userId, createdAt])
   @@map("plans")
 }
 
@@ -91,6 +94,8 @@ model PlanItem {
   plan     Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([planId, order])
+  @@index([exerciseId])
   @@map("plan_items")
 }
 
@@ -118,7 +123,7 @@ model DailyLogItem {
   dailyLog DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
-  @@index([dailyLogId])
+  @@unique([dailyLogId, exerciseId])
   @@index([exerciseId, isChecked])
   @@map("daily_log_items")
 }

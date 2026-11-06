@@ -6,6 +6,7 @@ import { Dumbbell, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { exerciseDetail, type Plan, type Exercise } from "@/types";
+import { fetchJson } from "@/lib/queries";
 
 interface Props {
   open: boolean;
@@ -30,7 +31,8 @@ export function PlanModal({ open, onClose, onSaved, initial }: Props) {
 
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
-    queryFn: () => fetch("/api/exercises").then((r) => r.json()),
+    queryFn: () => fetchJson<Exercise[]>("/api/exercises"),
+    staleTime: 5 * 60_000,
     enabled: open,
   });
 

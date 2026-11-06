@@ -7,6 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ExerciseModal } from "@/components/exercise/ExerciseModal";
 import { ExerciseCard } from "@/components/exercise/ExerciseCard";
+import { fetchJson } from "@/lib/queries";
 import { CATEGORY_LABEL, MUSCLE_GROUP_LABEL, type Exercise, type ExerciseCategory, type MuscleGroup } from "@/types";
 
 const ALL = "ALL";
@@ -23,7 +24,8 @@ export default function ExercisesPage() {
 
   const { data, isLoading } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
-    queryFn: () => fetch("/api/exercises").then((r) => r.json()),
+    queryFn: () => fetchJson<Exercise[]>("/api/exercises"),
+    staleTime: 5 * 60_000,
   });
 
   const filtered = useMemo(() => {
@@ -44,6 +46,7 @@ export default function ExercisesPage() {
     if (!res.ok) return toast.error("Gagal menghapus");
     toast.success("Latihan dihapus");
     qc.invalidateQueries({ queryKey: ["exercises"] });
+    qc.invalidateQueries({ queryKey: ["plans"] });
   };
 
   const hasFilter = filterCategory !== ALL || filterMuscle !== ALL;
@@ -286,7 +289,10 @@ export default function ExercisesPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         initial={editing}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["exercises"] })}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ["exercises"] });
+          qc.invalidateQueries({ queryKey: ["plans"] });
+        }}
       />
 
       {deleteId && (

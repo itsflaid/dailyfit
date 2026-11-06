@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { getCurrentMonth } from "@/lib/utils";
 
 interface Props {
   data: Record<string, number | null>[];
@@ -30,18 +31,13 @@ function shiftMonth(ym: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function getCurrentYM(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export function MonthlyChart({
   data,
   monthName,
   selectedMonth,
   onMonthChange,
 }: Props) {
-  const isCurrentMonth = selectedMonth === getCurrentYM();
+  const isCurrentMonth = selectedMonth === getCurrentMonth();
 
   const activeCategories = CATEGORIES.filter((cat) =>
     data.some((d) => (d[cat.key] ?? 0) > 0)
@@ -205,6 +201,7 @@ export function MonthlyChart({
                       strokeWidth: 2,
                     }}
                     connectNulls={false}
+                    isAnimationActive={false}
                   />
                 ))}
               </LineChart>

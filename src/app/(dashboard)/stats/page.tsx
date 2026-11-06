@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { toast } from "sonner";
 import { FileDown, Calendar, CalendarDays, X } from "lucide-react";
@@ -11,21 +11,8 @@ import { MonthlyChart } from "@/components/stats/MonthlyChart";
 import { CategoryChart } from "@/components/stats/CategoryChart";
 import { TopExercises } from "@/components/stats/TopExercises";
 import { ActivityHeatmap } from "@/components/stats/HeatmapActivity";
-
-interface StatsData {
-  streak: number;
-  totalWeek: number;
-  completedWeek: number;
-  totalMonth: number;
-  completedMonth: number;
-  activeDaysMonth: number;
-  monthName: string;
-  weeklyData: { day: string; total: number; completed: number }[];
-  monthlyData: { date: number; total: number | null; completed: number | null }[];
-  topExercises: { name: string; count: number }[];
-  allExercises: { name: string; count: number }[];
-  categoryData: { name: string; value: number }[];
-}
+import { statsQuery, heatmapQuery } from "@/lib/queries";
+import { getCurrentMonth, getTodayDate } from "@/lib/utils";
 
 const containerVariants: Variants = {
   hidden: {},
@@ -41,13 +28,10 @@ const cardVariants: Variants = {
   },
 };
 
-function getInitialMonth(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export default function StatsPage() {
-  const [selectedMonth, setSelectedMonth] = useState(getInitialMonth);
+  const qc = useQueryClient();
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const [animateIn] = useState(() => !qc.getQueryData(statsQuery(getCurrentMonth()).queryKey));
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState<"mingguan" | "bulanan" | null>(null);
 
@@ -60,13 +44,14 @@ export default function StatsPage() {
     setExporting(type);
     setShowExportModal(false);
     try {
-      const res = await fetch(`/api/reports/${REPORT_ENDPOINT[type]}`);
+      const today = getTodayDate();
+      const res = await fetch(`/api/reports/${REPORT_ENDPOINT[type]}?today=${today}`);
       if (!res.ok) throw new Error("Gagal membuat laporan");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dailyfit-laporan-${type}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.download = `dailyfit-laporan-${type}-${today}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -76,20 +61,11 @@ export default function StatsPage() {
       setExporting(null);
     }
   };
-  const { data: stats, isLoading } = useQuery<StatsData>({
-    queryKey: ["stats", selectedMonth],
-    queryFn: () =>
-      fetch(`/api/stats?month=${selectedMonth}`, { cache: "no-store" }).then(
-        (r) => r.json()
-      ),
+  const { data: stats, isLoading } = useQuery({
+    ...statsQuery(selectedMonth),
     placeholderData: keepPreviousData,
-    // Real-time freshness abis toggle checklist di Today page udah dihandle
-    // via optimistic cache patch (updateCachedStats) + invalidateQueries(["stats"])
-    // di today/page.tsx onSettled. React Query default refetchOnMount:true udah
-    // otomatis refetch query yang di-mark stale, jadi "always" di sini cuma
-    // maksa network call tiap mount walau data masih fresh — dibuang, gak
-    // ngaruh ke real-time behavior.
   });
+  useQuery(heatmapQuery);
 
   if (isLoading) {
     return (
@@ -109,7 +85,7 @@ export default function StatsPage() {
     <motion.div
       className="space-y-5 pb-10"
       variants={containerVariants}
-      initial="hidden"
+      initial={animateIn ? "hidden" : false}
       animate="show"
     >
       <motion.div variants={cardVariants} className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">

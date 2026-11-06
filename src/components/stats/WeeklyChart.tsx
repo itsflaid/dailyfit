@@ -21,8 +21,8 @@ export function WeeklyChart({ data }: Props) {
             contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: 12, padding: "8px 12px" }}
             cursor={{ fill: "#fef2f2" }}
           />
-          <Bar dataKey="completed" name="Selesai" fill="#C41230" radius={[6, 6, 0, 0]} />
-          <Bar dataKey="total" name="Total" fill="#fecaca" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="completed" name="Selesai" fill="#C41230" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="total" name="Total" fill="#fecaca" radius={[6, 6, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

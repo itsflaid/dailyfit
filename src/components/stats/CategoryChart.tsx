@@ -28,7 +28,7 @@ export function CategoryChart({ data }: Props) {
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <PieChart>
-            <Pie data={labeled} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={65} innerRadius={35} paddingAngle={2}>
+            <Pie data={labeled} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={65} innerRadius={35} paddingAngle={2} isAnimationActive={false}>
               {labeled.map((_, i) => (
                 <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
               ))}

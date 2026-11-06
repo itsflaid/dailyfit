@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { heatmapQuery } from "@/lib/queries";
+import { keyToLocalDate } from "@/lib/dates";
+import { useToday } from "@/lib/use-today";
 
 const BLAZE_THRESHOLD = 15;
 const LEVEL_COLORS = [
@@ -30,8 +33,8 @@ function formatKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function buildGrid(): Date[][] {
-  const today = new Date();
+function buildGrid(todayKey: string): Date[][] {
+  const today = keyToLocalDate(todayKey);
   const dayOfWeek = today.getDay();
   const endSunday = new Date(today);
   endSunday.setDate(today.getDate() + (6 - dayOfWeek));
@@ -64,12 +67,10 @@ export function ActivityHeatmap() {
     y: number;
   } | null>(null);
 
-  const { data: heatmapData, isLoading } = useQuery<Record<string, number>>({
-    queryKey: ["heatmap"],
-    queryFn: () => fetch("/api/stats/heatmap").then((r) => r.json()),
-  });
+  const today = useToday();
+  const { data: heatmapData, isLoading } = useQuery(heatmapQuery);
 
-  const weeks = buildGrid();
+  const weeks = useMemo(() => buildGrid(today), [today]);
 
   const monthPositions: { label: string; col: number }[] = [];
   let lastMonth = -1;
@@ -236,7 +237,7 @@ export function ActivityHeatmap() {
                     const count = heatmapData?.[key] ?? 0;
                     const isBlaze = count >= BLAZE_THRESHOLD;
                     const color = getColor(count);
-                    const isToday = key === formatKey(new Date());
+                    const isToday = key === today;
 
                     return (
                       <div

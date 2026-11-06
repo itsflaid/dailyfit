@@ -21,6 +21,10 @@ export function getTodayDate(): string {
   return `${year}-${month}-${day}`;
 }
 
+export function getCurrentMonth(): string {
+  return getTodayDate().slice(0, 7);
+}
+
 export function formatDateLabel(date: Date): string {
   return date.toLocaleDateString("id-ID", {
     weekday: "long",
