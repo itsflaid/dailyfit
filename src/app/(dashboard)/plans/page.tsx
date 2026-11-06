@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { PlanCard } from "@/components/plan/PlanCard";
 import { PlanModal } from "@/components/plan/PlanModal";
 import { type Plan } from "@/types";
+import { fetchJson } from "@/lib/queries";
 
 export default function PlansPage() {
   const qc = useQueryClient();
@@ -18,7 +19,8 @@ export default function PlansPage() {
 
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["plans"],
-    queryFn: () => fetch("/api/plans").then((r) => r.json()),
+    queryFn: () => fetchJson<Plan[]>("/api/plans"),
+    staleTime: 5 * 60_000,
   });
 
   const handleDelete = async () => {

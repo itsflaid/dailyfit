@@ -1,35 +1,23 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { buildHeatmap, resolveToday, statsWindow } from "@/lib/stats";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  const userId = session.user.id;
+  const todayKey = resolveToday(new URL(req.url).searchParams.get("today"));
+  const w = statsWindow(todayKey, todayKey.slice(0, 7));
 
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const yearAgo = new Date();
-  yearAgo.setDate(yearAgo.getDate() - 364);
-  yearAgo.setHours(0, 0, 0, 0);
+  const rows = await prisma.$queryRaw<{ day: string; done: number }[]>`
+    SELECT to_char(l.date, 'YYYY-MM-DD') AS day,
+           (COUNT(*) FILTER (WHERE i."isChecked"))::int AS done
+    FROM daily_logs l
+    JOIN daily_log_items i ON i."dailyLogId" = l.id
+    WHERE l."userId" = ${session.user.id}
+      AND l.date >= ${w.yearStart}::date AND l.date <= ${w.today}::date
+    GROUP BY l.date`;
 
-  const logs = await prisma.dailyLog.findMany({
-    where: {
-      userId,
-      date: { gte: yearAgo, lte: today },
-    },
-    include: {
-      items: { select: { isChecked: true } },
-    },
-  });
-
-  const map: Record<string, number> = {};
-  for (const log of logs) {
-    const d = new Date(log.date);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    map[key] = log.items.filter((i) => i.isChecked).length;
-  }
-
-  return NextResponse.json(map);
+  return NextResponse.json(buildHeatmap(rows));
 }

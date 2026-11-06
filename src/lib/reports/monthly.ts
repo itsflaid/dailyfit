@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ExerciseCategory } from "@prisma/client";
+import { addDaysToKey, keyToLocalDate, keyToUtcDate } from "@/lib/dates";
 
 export type MonthlyReportExerciseLine = {
   name: string;
@@ -37,19 +38,6 @@ const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
   FLEXIBILITY: "Fleksibilitas",
 };
 
-function startOfDay(d: Date) {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
-function getRolling30DateRange() {
-  const end = startOfDay(new Date());
-  const start = new Date(end);
-  start.setDate(start.getDate() - 29);
-  return { start, end };
-}
-
 function formatPeriodLabel(from: Date, to: Date) {
   const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" };
   const fromLabel = from.toLocaleDateString("id-ID", opts);
@@ -57,12 +45,17 @@ function formatPeriodLabel(from: Date, to: Date) {
   return `${fromLabel} - ${toLabel}`;
 }
 
-export async function getMonthlyReportData(userId: string, userName: string): Promise<MonthlyReportData> {
-  const { start, end } = getRolling30DateRange();
+export async function getMonthlyReportData(
+  userId: string,
+  userName: string,
+  todayKey: string
+): Promise<MonthlyReportData> {
   const DAY_WINDOW = 30;
+  const startKey = addDaysToKey(todayKey, -(DAY_WINDOW - 1));
 
   const logs = await prisma.dailyLog.findMany({
-    where: { userId, date: { gte: start, lte: end } },
+    where: { userId, date: { gte: keyToUtcDate(startKey), lte: keyToUtcDate(todayKey) } },
+    relationLoadStrategy: "join",
     include: {
       items: {
         where: { isChecked: true },
@@ -71,7 +64,7 @@ export async function getMonthlyReportData(userId: string, userName: string): Pr
     },
   });
 
-  const logsByDateKey = new Map(logs.map((log) => [startOfDay(log.date).toISOString(), log]));
+  const logsByDateKey = new Map(logs.map((log) => [log.date.toISOString().slice(0, 10), log]));
 
   const days: MonthlyReportDay[] = [];
   const exerciseCountAll: Record<string, { name: string; count: number }> = {};
@@ -85,9 +78,9 @@ export async function getMonthlyReportData(userId: string, userName: string): Pr
   let totalExercises = 0;
 
   for (let i = 0; i < DAY_WINDOW; i++) {
-    const date = new Date(end);
-    date.setDate(date.getDate() - i);
-    const log = logsByDateKey.get(startOfDay(date).toISOString());
+    const dayKey = addDaysToKey(todayKey, -i);
+    const date = keyToLocalDate(dayKey);
+    const log = logsByDateKey.get(dayKey);
 
     const grouped = new Map<string, MonthlyReportExerciseLine>();
     for (const item of log?.items ?? []) {
@@ -131,8 +124,8 @@ export async function getMonthlyReportData(userId: string, userName: string): Pr
 
   return {
     userName,
-    periodLabel: formatPeriodLabel(start, end),
-    generatedAt: new Date(),
+    periodLabel: formatPeriodLabel(keyToLocalDate(startKey), keyToLocalDate(todayKey)),
+    generatedAt: keyToLocalDate(todayKey),
     days,
     summary: {
       daysTrained,

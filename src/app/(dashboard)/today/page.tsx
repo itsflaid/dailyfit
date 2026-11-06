@@ -5,23 +5,11 @@ import { Plus, ListChecks, CalendarCheck2, Check, Trash2, Undo2 } from "lucide-r
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
-import { formatDateLabel, getTodayDate } from "@/lib/utils";
-import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type ExerciseCategory, type Plan } from "@/types";
-
-interface StatsData {
-  streak: number;
-  previousStreak?: number;
-  totalWeek: number;
-  completedWeek: number;
-  totalMonth: number;
-  completedMonth: number;
-  activeDaysMonth: number;
-  weeklyData: { day: string; total: number; completed: number }[];
-  monthlyData: Array<Record<string, number | null>>;
-  topExercises: { name: string; count: number }[];
-  allExercises: { name: string; count: number }[];
-  categoryData: { name: string; value: number }[];
-}
+import { formatDateLabel } from "@/lib/utils";
+import { fetchJson, PROGRESS_MUTATION_KEY } from "@/lib/queries";
+import { keyToLocalDate } from "@/lib/dates";
+import { useToday } from "@/lib/use-today";
+import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type ExerciseCategory, type Plan, type StatsData } from "@/types";
 
 type StatsSnapshot = [QueryKey, StatsData | undefined][];
 
@@ -147,7 +135,7 @@ export default function TodayPage() {
   const [planOpen, setPlanOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
-  const date = getTodayDate();
+  const date = useToday();
 
   // Snapshot sekali di awal: kalau data hari ini UDAH ada di cache (revisit,
   // bukan first load), skip entrance animation per-item biar list langsung
@@ -156,7 +144,7 @@ export default function TodayPage() {
 
   const { data: log, isLoading } = useQuery<DailyLog>({
     queryKey: ["daily", date],
-    queryFn: () => fetch(`/api/daily-logs?date=${date}`).then((r) => r.json()),
+    queryFn: () => fetchJson<DailyLog>(`/api/daily-logs?date=${date}`),
   });
 
   const items = log?.items ?? [];
@@ -165,17 +153,20 @@ export default function TodayPage() {
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
   const prefersReduced = useReducedMotion();
-  const refreshProgressCaches = () => {
-    qc.invalidateQueries({ queryKey: ["stats"] });
-    qc.invalidateQueries({ queryKey: ["heatmap"] });
-  };
-
   const pendingDeletes = useRef<Map<string, {
     timeoutId: ReturnType<typeof setTimeout>;
     previousLog?: DailyLog;
     previousStats: StatsSnapshot;
     previousHeatmap?: Record<string, number>;
   }>>(new Map());
+
+  const refreshProgressCaches = () => {
+    if (qc.isMutating({ mutationKey: PROGRESS_MUTATION_KEY }) > 1) return;
+    if (pendingDeletes.current.size > 0) return;
+    qc.invalidateQueries({ queryKey: ["daily", date] });
+    qc.invalidateQueries({ queryKey: ["stats"] });
+    qc.invalidateQueries({ queryKey: ["heatmap"] });
+  };
 
   const handleDelete = (item: DailyLog["items"][0]) => {
     Promise.all([
@@ -230,8 +221,11 @@ export default function TodayPage() {
 
   const commitDelete = async (id: string) => {
     const entry = pendingDeletes.current.get(id);
-    const res = await fetch(`/api/daily-logs/${id}`, { method: "DELETE" });
-    if (!res.ok) {
+    pendingDeletes.current.delete(id);
+    try {
+      const res = await fetch(`/api/daily-logs/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete gagal");
+    } catch {
       if (entry) {
         qc.setQueryData(["daily", date], entry.previousLog);
         entry.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
@@ -239,7 +233,6 @@ export default function TodayPage() {
       }
       toast.error("Gagal menghapus");
     }
-    pendingDeletes.current.delete(id);
     refreshProgressCaches();
   };
 
@@ -254,7 +247,7 @@ export default function TodayPage() {
   }, []);
 
   const toggleMutation = useMutation({
-    mutationKey: ["daily-progress"],
+    mutationKey: PROGRESS_MUTATION_KEY,
     scope: { id: "daily-progress" },
     mutationFn: async ({ id, current }: { id: string; current: boolean }) => {
       const res = await fetch(`/api/daily-logs/${id}`, {
@@ -316,13 +309,12 @@ export default function TodayPage() {
       toast.error("Gagal memperbarui");
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["daily", date] });
       refreshProgressCaches();
     },
   });
 
   const addMutation = useMutation({
-    mutationKey: ["daily-progress"],
+    mutationKey: PROGRESS_MUTATION_KEY,
     scope: { id: "daily-progress" },
     mutationFn: async ({
       exercises,
@@ -399,7 +391,6 @@ export default function TodayPage() {
       toast.error("Gagal menambahkan");
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["daily", date] });
       refreshProgressCaches();
     },
   });
@@ -419,8 +410,8 @@ export default function TodayPage() {
         <div className="text-xs uppercase tracking-widest text-red-200 font-semibold mb-1">
           Checklist Harian
         </div>
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
-          {formatDateLabel(new Date())}
+        <h1 suppressHydrationWarning className="text-2xl md:text-3xl font-black tracking-tight mb-1">
+          {formatDateLabel(keyToLocalDate(date))}
         </h1>
         {total > 0 && (
           <p className="text-red-100 text-sm mb-4">
@@ -489,14 +480,14 @@ export default function TodayPage() {
               return (
               <motion.div
                 key={item.id}
-                layout
+                layout="position"
                 initial={prefersReduced || skipEntrance ? false : { opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
+                animate={{ opacity: item.isChecked ? 0.7 : 1, x: 0 }}
                 exit={{ opacity: 0, x: 24 }}
                 transition={{ duration: 0.2 }}
-                className={`rounded-2xl border p-4 flex items-center gap-3 transition shadow-sm ${
+                className={`rounded-2xl border p-4 flex items-center gap-3 transition-colors shadow-sm ${
                   isPending ? "bg-off animate-shimmer" : "bg-white"
-                } ${item.isChecked ? "opacity-70" : ""}`}
+                }`}
               >
                 <button
                   onClick={() => { if (!isPending) toggle(item.id, item.isChecked); }}
@@ -569,7 +560,8 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exer
 
   const { data: plans } = useQuery<Plan[]>({
     queryKey: ["plans"],
-    queryFn: () => fetch("/api/plans").then((r) => r.json()),
+    queryFn: () => fetchJson<Plan[]>("/api/plans"),
+    staleTime: 5 * 60_000,
   });
 
   const handlePick = async (plan: Plan) => {
@@ -586,7 +578,7 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exer
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50"
         onClick={() => !submittingId && onClose()}
       />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
@@ -649,7 +641,8 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
 
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
-    queryFn: () => fetch("/api/exercises").then((r) => r.json()),
+    queryFn: () => fetchJson<Exercise[]>("/api/exercises"),
+    staleTime: 5 * 60_000,
   });
 
   const filtered = useMemo(() => {
@@ -679,7 +672,7 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50"
         onClick={() => !isSubmitting && onClose()}
       />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">

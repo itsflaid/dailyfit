@@ -5,17 +5,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Flame, CalendarCheck2, Dumbbell, ArrowRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { getGreeting } from "@/lib/utils";
+import { statsQuery } from "@/lib/queries";
+import { useToday } from "@/lib/use-today";
 
 export default function HomePage() {
   const { data: session } = useSession();
   const name = session?.user?.name
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ["stats"],
-    queryFn: () => fetch("/api/stats").then((r) => r.json()),
-  });
+  const today = useToday();
+  const { data: stats, isLoading } = useQuery(statsQuery(today.slice(0, 7)));
 
-  const progress = stats?.totalWeek > 0
+  const progress = stats && stats.totalWeek > 0
     ? Math.round((stats.completedWeek / stats.totalWeek) * 100)
     : 0;
 
@@ -34,7 +34,7 @@ export default function HomePage() {
         ) : (
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium">
             <Flame className="h-4 w-4" />
-            Streak {stats.streak ?? 0} hari
+            Streak {stats?.streak ?? 0} hari
           </div>
         )}
       </div>
@@ -60,8 +60,8 @@ export default function HomePage() {
               Minggu Ini
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900">{stats.completedWeek ?? 0}</span>
-              <span className="text-sm text-muted-foreground">/ {stats.totalWeek ?? 0} selesai</span>
+              <span className="text-3xl font-black text-slate-900">{stats?.completedWeek ?? 0}</span>
+              <span className="text-sm text-muted-foreground">/ {stats?.totalWeek ?? 0} selesai</span>
             </div>
             <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
@@ -77,7 +77,7 @@ export default function HomePage() {
               Streak Saat Ini
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900">{stats.streak ?? 0}</span>
+              <span className="text-3xl font-black text-slate-900">{stats?.streak ?? 0}</span>
               <span className="text-sm text-muted-foreground">hari berturut</span>
             </div>
             <p className="text-xs text-muted-foreground">

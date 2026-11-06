@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ExerciseCategory } from "@prisma/client";
+import { addDaysToKey, keyToLocalDate, keyToUtcDate } from "@/lib/dates";
 
 export type WeeklyReportExerciseLine = {
   name: string;
@@ -37,12 +38,6 @@ const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
   FLEXIBILITY: "Fleksibilitas",
 };
 
-function startOfDay(d: Date) {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
 function formatPeriodLabel(from: Date, to: Date) {
   const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" };
   const fromLabel = from.toLocaleDateString("id-ID", opts);
@@ -50,13 +45,16 @@ function formatPeriodLabel(from: Date, to: Date) {
   return `${fromLabel} - ${toLabel}`;
 }
 
-export async function getWeeklyReportData(userId: string, userName: string): Promise<WeeklyReportData> {
-  const anchor = startOfDay(new Date());
-  const earliest = new Date(anchor);
-  earliest.setDate(earliest.getDate() - 6);
+export async function getWeeklyReportData(
+  userId: string,
+  userName: string,
+  todayKey: string
+): Promise<WeeklyReportData> {
+  const earliestKey = addDaysToKey(todayKey, -6);
 
   const logs = await prisma.dailyLog.findMany({
-    where: { userId, date: { gte: earliest, lte: anchor } },
+    where: { userId, date: { gte: keyToUtcDate(earliestKey), lte: keyToUtcDate(todayKey) } },
+    relationLoadStrategy: "join",
     include: {
       items: {
         where: { isChecked: true },
@@ -65,7 +63,7 @@ export async function getWeeklyReportData(userId: string, userName: string): Pro
     },
   });
 
-  const logsByDateKey = new Map(logs.map((log) => [startOfDay(log.date).toISOString(), log]));
+  const logsByDateKey = new Map(logs.map((log) => [log.date.toISOString().slice(0, 10), log]));
 
   const days: WeeklyReportDay[] = [];
   const exerciseCountAll: Record<string, { name: string; count: number }> = {};
@@ -79,9 +77,9 @@ export async function getWeeklyReportData(userId: string, userName: string): Pro
   let totalExercises = 0;
 
   for (let i = 0; i < 7; i++) {
-    const date = new Date(anchor);
-    date.setDate(date.getDate() - i);
-    const log = logsByDateKey.get(startOfDay(date).toISOString());
+    const dayKey = addDaysToKey(todayKey, -i);
+    const date = keyToLocalDate(dayKey);
+    const log = logsByDateKey.get(dayKey);
 
     const grouped = new Map<string, WeeklyReportExerciseLine>();
     for (const item of log?.items ?? []) {
@@ -125,8 +123,8 @@ export async function getWeeklyReportData(userId: string, userName: string): Pro
 
   return {
     userName,
-    periodLabel: formatPeriodLabel(earliest, anchor),
-    generatedAt: new Date(),
+    periodLabel: formatPeriodLabel(keyToLocalDate(earliestKey), keyToLocalDate(todayKey)),
+    generatedAt: keyToLocalDate(todayKey),
     days,
     summary: {
       daysTrained,

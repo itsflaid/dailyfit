@@ -10,6 +10,7 @@ export async function GET() {
 
   const plans = await prisma.plan.findMany({
     where: { userId },
+    relationLoadStrategy: "join",
     include: {
       items: {
         include: { exercise: true },
@@ -31,13 +32,23 @@ export async function POST(req: NextRequest) {
 
   if (!title) return NextResponse.json({ message: "Judul wajib diisi" }, { status: 400 });
 
+  const requested: string[] = Array.isArray(exerciseIds)
+    ? exerciseIds.filter((v): v is string => typeof v === "string")
+    : [];
+  const owned = await prisma.exercise.findMany({
+    where: { id: { in: requested }, userId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((e) => e.id));
+  const validIds = requested.filter((id) => ownedIds.has(id));
+
   const plan = await prisma.plan.create({
     data: {
       userId,
       title,
       description: description ?? null,
       items: {
-        create: (exerciseIds ?? []).map((exerciseId: string, i: number) => ({
+        create: validIds.map((exerciseId, i) => ({
           exerciseId,
           order: i,
         })),

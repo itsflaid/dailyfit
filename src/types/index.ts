@@ -60,6 +60,22 @@ export interface DailyLogItem {
   exercise: Exercise;
 }
 
+export interface StatsData {
+  streak: number;
+  previousStreak?: number;
+  totalWeek: number;
+  completedWeek: number;
+  totalMonth: number;
+  completedMonth: number;
+  activeDaysMonth: number;
+  monthName: string;
+  weeklyData: { day: string; total: number; completed: number }[];
+  monthlyData: Array<Record<string, number | null>>;
+  topExercises: { name: string; count: number }[];
+  allExercises: { name: string; count: number }[];
+  categoryData: { name: string; value: number }[];
+}
+
 export const CATEGORY_LABEL: Record<ExerciseCategory, string> = {
   STRENGTH: "Strength",
   CARDIO: "Cardio",
