@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion, useReducedMotion, type PanInfo, type Variants } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
+import { motion, useReducedMotion, type PanInfo, type Variants } from "framer-motion";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
 import { addDaysToKey, keyToLocalDate } from "@/lib/dates";
 import { dailyLogQuery, heatmapQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ const SWIPE_FLICK_DISTANCE = 24;
 const SWIPE_FLICK_VELOCITY = 500;
 const SLIDE_OFFSET = 28;
 const WEEKDAY_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 interface Props {
   date: string;
@@ -177,9 +178,16 @@ export function LogGerakan({ date, today, onDateChange }: Props) {
   const canPrev = date > addDaysToKey(today, -MAX_DAYS_BACK);
   const canNext = date < today;
 
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
   const go = (delta: -1 | 1) => {
     if (delta < 0 ? !canPrev : !canNext) return;
     onDateChange(addDaysToKey(date, delta));
+  };
+
+  const pickDate = (key: string) => {
+    if (!key || key > today || key < addDaysToKey(today, -MAX_DAYS_BACK)) return;
+    onDateChange(key);
   };
 
   useEffect(() => {
@@ -191,7 +199,6 @@ export function LogGerakan({ date, today, onDateChange }: Props) {
   const slide: Variants = {
     enter: (d: number) => ({ opacity: 0, x: d * offset }),
     center: { opacity: 1, x: 0 },
-    exit: (d: number) => ({ opacity: 0, x: -d * offset }),
   };
 
   const days = stripDays(date, today);
@@ -224,6 +231,34 @@ export function LogGerakan({ date, today, onDateChange }: Props) {
               Hari ini
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              const input = dateInputRef.current;
+              if (!input) return;
+              try {
+                input.showPicker();
+              } catch {
+                input.click();
+              }
+            }}
+            aria-label="Pilih tanggal"
+            className="h-8 w-8 rounded-xl flex items-center justify-center transition"
+            style={{ background: "rgba(0,0,0,0.05)" }}
+          >
+            <CalendarDays className="h-4 w-4" style={{ color: "#555" }} />
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={date}
+            min={addDaysToKey(today, -MAX_DAYS_BACK)}
+            max={today}
+            onChange={(e) => pickDate(e.target.value)}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
           <button
             type="button"
             onClick={() => go(-1)}
@@ -270,6 +305,12 @@ export function LogGerakan({ date, today, onDateChange }: Props) {
               <span className="text-[10px] font-medium uppercase">{WEEKDAY_SHORT[d.getDay()]}</span>
               <span className="text-sm font-bold leading-none">{d.getDate()}</span>
               <span
+                className="text-[9px] font-medium uppercase leading-none"
+                style={{ opacity: selected ? 0.85 : 0.6 }}
+              >
+                {MONTH_SHORT[d.getMonth()]}
+              </span>
+              <span
                 className="h-1 w-1 rounded-full"
                 style={{ background: hasActivity ? (selected ? "#fff" : "#C41230") : "transparent" }}
               />
@@ -279,26 +320,23 @@ export function LogGerakan({ date, today, onDateChange }: Props) {
       </div>
 
       <div className="mt-4 overflow-hidden">
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
-          <motion.div
-            key={date}
-            custom={direction}
-            variants={slide}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.18}
-            onDragEnd={(_, info) => {
-              const intent = swipeIntent(info);
-              if (intent !== 0) go(intent);
-            }}
-          >
-            <DayPanel date={date} today={today} />
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={date}
+          custom={direction}
+          variants={slide}
+          initial="enter"
+          animate="center"
+          transition={{ duration: 0.16, ease: "easeOut" }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.18}
+          onDragEnd={(_, info) => {
+            const intent = swipeIntent(info);
+            if (intent !== 0) go(intent);
+          }}
+        >
+          <DayPanel date={date} today={today} />
+        </motion.div>
       </div>
     </section>
   );
