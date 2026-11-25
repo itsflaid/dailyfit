@@ -56,7 +56,7 @@ export const styles = StyleSheet.create({
   dayDate: { fontSize: 9, color: MUTED },
   intensityBarTrack: { height: 3, backgroundColor: "#EFEAE3", borderRadius: 2, marginBottom: 8, marginTop: 2 },
   intensityBarFill: { height: 3, backgroundColor: CRIMSON, borderRadius: 2 },
-  restDay: { fontSize: 10, color: MUTED, fontStyle: "italic", marginBottom: 8 },
+  restDay: { fontSize: 10, color: MUTED, marginBottom: 8 },
   dayBlock: { marginBottom: 16 },
   summaryBox: { backgroundColor: OFF, borderRadius: 8, padding: 16, marginTop: 8, borderWidth: 1, borderColor: "#E5E0DA" },
   summaryTitle: { fontSize: 13, fontWeight: 700, color: INK, marginBottom: 10 },

@@ -1,6 +1,6 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { getTodayDate } from "@/lib/utils";
-import type { StatsData } from "@/types";
+import type { DailyLog, StatsData } from "@/types";
 
 export const PROGRESS_MUTATION_KEY = ["daily-progress"];
 
@@ -33,6 +33,16 @@ export const statsQuery = (month: string) =>
       return fetchJson<StatsData>(`/api/stats?month=${month}&today=${getTodayDate()}`, {
         cache: "no-store",
       });
+    },
+    staleTime: FIVE_MIN,
+  });
+
+export const dailyLogQuery = (date: string) =>
+  queryOptions({
+    queryKey: ["daily", date],
+    queryFn: async ({ client }) => {
+      await waitForProgressMutations(client);
+      return fetchJson<DailyLog>(`/api/daily-logs?date=${date}`, { cache: "no-store" });
     },
     staleTime: FIVE_MIN,
   });
