@@ -11,8 +11,10 @@ import { MonthlyChart } from "@/components/stats/MonthlyChart";
 import { CategoryChart } from "@/components/stats/CategoryChart";
 import { TopExercises } from "@/components/stats/TopExercises";
 import { ActivityHeatmap } from "@/components/stats/HeatmapActivity";
+import { LogGerakan } from "@/components/stats/LogGerakan";
 import { statsQuery, heatmapQuery } from "@/lib/queries";
 import { getCurrentMonth, getTodayDate } from "@/lib/utils";
+import { useToday } from "@/lib/use-today";
 
 const containerVariants: Variants = {
   hidden: {},
@@ -35,6 +37,17 @@ export default function StatsPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState<"mingguan" | "bulanan" | null>(null);
 
+  const todayKey = useToday();
+  const [logDate, setLogDate] = useState<string | null>(null);
+  const activeLogDate = logDate ?? todayKey;
+
+  const changeLogDate = (key: string) => setLogDate(key === todayKey ? null : key);
+
+  const selectLogDate = (key: string) => {
+    changeLogDate(key);
+    document.getElementById("log-gerakan")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const REPORT_ENDPOINT: Record<"mingguan" | "bulanan", string> = {
     mingguan: "weekly",
     bulanan: "monthly",
@@ -52,8 +65,10 @@ export default function StatsPage() {
       const a = document.createElement("a");
       a.href = url;
       a.download = `dailyfit-laporan-${type}-${today}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (err) {
       console.error("Export PDF gagal:", err);
       toast.error("Gagal mengekspor laporan, coba lagi.");
@@ -195,6 +210,10 @@ export default function StatsPage() {
         />
       </motion.div>
 
+      <motion.div variants={cardVariants}>
+        <LogGerakan date={activeLogDate} today={todayKey} onDateChange={changeLogDate} />
+      </motion.div>
+
       <motion.div
         className="grid md:grid-cols-2 gap-4 min-w-0"
         variants={cardVariants}
@@ -222,7 +241,7 @@ export default function StatsPage() {
       </motion.div>
 
       <motion.div variants={cardVariants}>
-        <ActivityHeatmap />
+        <ActivityHeatmap selectedDate={activeLogDate} onSelectDate={selectLogDate} />
       </motion.div>
     </motion.div>
   );

@@ -59,7 +59,12 @@ const MIN_CELL = 13;
 const GAP = 3;
 const DAY_LABEL_W = 28;
 
-export function ActivityHeatmap() {
+interface HeatmapProps {
+  selectedDate?: string;
+  onSelectDate?: (key: string) => void;
+}
+
+export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<{
     date: string;
     count: number;
@@ -71,6 +76,12 @@ export function ActivityHeatmap() {
   const { data: heatmapData, isLoading } = useQuery(heatmapQuery);
 
   const weeks = useMemo(() => buildGrid(today), [today]);
+
+  const selectDate = (key: string) => {
+    if (key > today || !onSelectDate) return;
+    setTooltip(null);
+    onSelectDate(key);
+  };
 
   const monthPositions: { label: string; col: number }[] = [];
   let lastMonth = -1;
@@ -238,11 +249,23 @@ export function ActivityHeatmap() {
                     const isBlaze = count >= BLAZE_THRESHOLD;
                     const color = getColor(count);
                     const isToday = key === today;
+                    const isFuture = key > today;
+                    const isSelected = key === selectedDate;
 
                     return (
                       <div
                         key={di}
+                        role={isFuture ? undefined : "button"}
+                        tabIndex={isFuture ? undefined : 0}
+                        aria-label={isFuture ? undefined : `${count} gerakan pada ${key}`}
                         className={isBlaze ? "heatmap-blaze" : undefined}
+                        onClick={() => selectDate(key)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectDate(key);
+                          }
+                        }}
                         style={{
                           width: "100%",
                           aspectRatio: "1",
@@ -254,7 +277,8 @@ export function ActivityHeatmap() {
                             : count === 0
                             ? "1px solid rgba(0,0,0,0.08)"
                             : "none",
-                          cursor: "pointer",
+                          cursor: isFuture || !onSelectDate ? "default" : "pointer",
+                          boxShadow: isSelected ? "0 0 0 1.5px #0F0A0B" : undefined,
                           transition: "transform 0.1s",
                           flexShrink: 0,
                         }}
