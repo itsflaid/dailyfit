@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ExerciseModal } from "@/components/exercise/ExerciseModal";
 import { ExerciseCard } from "@/components/exercise/ExerciseCard";
 import { fetchJson } from "@/lib/queries";
+import { getTodayDate } from "@/lib/utils";
 import { CATEGORY_LABEL, MUSCLE_GROUP_LABEL, type Exercise, type ExerciseCategory, type MuscleGroup } from "@/types";
 
 const ALL = "ALL";
@@ -46,7 +47,9 @@ export default function ExercisesPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
-    const res = await fetch(`/api/exercises/${deleteId}`, { method: "DELETE" }).catch(() => null);
+    const res = await fetch(`/api/exercises/${deleteId}?today=${getTodayDate()}`, {
+      method: "DELETE",
+    }).catch(() => null);
     setDeleting(false);
     setDeleteId(null);
     if (!res?.ok) return toast.error("Gagal menghapus");
@@ -302,7 +305,7 @@ export default function ExercisesPage() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h3 className="font-display text-2xl" style={{ color: "#0F0A0B" }}>Hapus latihan?</h3>
-            <p className="text-sm" style={{ color: "#888" }}>Riwayat latihan ini di log harian, statistik, dan streak ikut terhapus permanen.</p>
+            <p className="text-sm" style={{ color: "#888" }}>Latihan hilang dari pustaka, rencana, dan checklist yang belum dikerjakan. Riwayat, statistik, dan streak tetap tersimpan.</p>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setDeleteId(null)}

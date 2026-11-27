@@ -7,6 +7,7 @@ import {
   CATEGORY_LABEL, MUSCLE_GROUP_LABEL,
   type Exercise, type ExerciseCategory, type ExerciseType, type MuscleGroup,
 } from "@/types";
+import { getTodayDate } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -60,7 +61,7 @@ export function ExerciseModal({ open, onClose, initial, onSaved }: Props) {
 
     try {
       const res = await fetch(
-        initial ? `/api/exercises/${initial.id}` : "/api/exercises",
+        initial ? `/api/exercises/${initial.id}?today=${getTodayDate()}` : "/api/exercises",
         {
           method: initial ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },

@@ -10,7 +10,7 @@ export async function GET() {
   const userId = session.user.id;
 
   const exercises = await prisma.exercise.findMany({
-    where: { userId },
+    where: { userId, deletedAt: null },
     orderBy: { createdAt: "desc" },
   });
 

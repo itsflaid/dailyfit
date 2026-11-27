@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ExerciseCategory } from "@prisma/client";
+import { applySnapshot } from "@/lib/log-items";
 import { addDaysToKey, keyToLocalDate, keyToUtcDate } from "@/lib/dates";
 
 export type WeeklyReportExerciseLine = {
@@ -82,7 +83,7 @@ export async function getWeeklyReportData(
     const log = logsByDateKey.get(dayKey);
 
     const grouped = new Map<string, WeeklyReportExerciseLine>();
-    for (const item of log?.items ?? []) {
+    for (const item of (log?.items ?? []).map(applySnapshot)) {
       const ex = item.exercise;
       const isTimeBased = ex.type === "TIME_BASED";
       const amount = isTimeBased

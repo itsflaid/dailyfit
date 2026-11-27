@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { isDateKey } from "@/lib/dates";
-
-const withItems = {
-  items: { include: { exercise: true }, orderBy: { order: "desc" as const } },
-};
+import { findDailyLog } from "@/lib/daily-logs";
+import { takeSnapshot } from "@/lib/log-items";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -16,11 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Date tidak valid" }, { status: 400 });
   }
 
-  const log = await prisma.dailyLog.findUnique({
-    where: { userId_date: { userId: session.user.id, date: new Date(date) } },
-    relationLoadStrategy: "join",
-    include: withItems,
-  });
+  const log = await findDailyLog(session.user.id, new Date(date));
 
   return NextResponse.json(log ?? { items: [] });
 }
@@ -46,24 +40,25 @@ export async function POST(req: NextRequest) {
       update: {},
       select: { id: true },
     }),
-    prisma.exercise.findMany({ where: { id: { in: ids }, userId }, select: { id: true } }),
+    prisma.exercise.findMany({ where: { id: { in: ids }, userId, deletedAt: null } }),
     prisma.dailyLogItem.aggregate({
       where: { dailyLog: { userId, date: dateObj } },
       _max: { order: true },
     }),
   ]);
 
-  const ownedIds = new Set(owned.map((e) => e.id));
-  const valid = ids.filter((id) => ownedIds.has(id));
+  const ownedById = new Map(owned.map((e) => [e.id, e]));
+  const valid = ids.flatMap((id) => ownedById.get(id) ?? []);
   if (valid.length === 0) {
     return NextResponse.json({ message: "Latihan tidak valid" }, { status: 400 });
   }
 
   const base = (agg._max.order ?? -1) + 1;
   const { count } = await prisma.dailyLogItem.createMany({
-    data: valid.map((exerciseId, i) => ({
+    data: valid.map((exercise, i) => ({
       dailyLogId: log.id,
-      exerciseId,
+      exerciseId: exercise.id,
+      snapshot: takeSnapshot(exercise),
       order: base + i,
       source: source === "plan" ? "plan" : "manual",
     })),
@@ -72,11 +67,7 @@ export async function POST(req: NextRequest) {
 
   if (count === 0) return NextResponse.json({ message: "Semua latihan sudah ada", added: 0 });
 
-  const updated = await prisma.dailyLog.findUnique({
-    where: { id: log.id },
-    relationLoadStrategy: "join",
-    include: withItems,
-  });
+  const updated = await findDailyLog(userId, dateObj);
 
   return NextResponse.json({ ...updated, added: count }, { status: 201 });
 }

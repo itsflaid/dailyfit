@@ -7,7 +7,7 @@ const DAY_MS = 86_400_000;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export type DayRow = { day: string; category: string; total: number; done: number };
-export type ExerciseRow = { name: string; category: string; count: number };
+export type ExerciseRow = { id: string; name: string; category: string; count: number };
 
 const keyOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const msOf = (key: string) => Date.parse(`${key}T00:00:00Z`);
@@ -86,9 +86,18 @@ export function buildStats(
   let previousStreak = 0;
   while (previousStreak < 364 && isActive(todayMs - (previousStreak + 1) * DAY_MS)) previousStreak++;
 
-  const allExercises = exerciseRows.map((e) => ({ name: e.name, count: e.count }));
+  // Satu latihan bisa muncul di beberapa baris bila kategorinya pernah diganti.
+  const byExercise = new Map<string, { name: string; count: number }>();
   const categoryCount: Record<string, number> = {};
-  for (const e of exerciseRows) categoryCount[e.category] = (categoryCount[e.category] ?? 0) + e.count;
+  for (const e of exerciseRows) {
+    const entry = byExercise.get(e.id) ?? { name: e.name, count: 0 };
+    entry.count += e.count;
+    byExercise.set(e.id, entry);
+    categoryCount[e.category] = (categoryCount[e.category] ?? 0) + e.count;
+  }
+  const allExercises = [...byExercise.values()].sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name)
+  );
 
   return {
     streak,

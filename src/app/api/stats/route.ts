@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   const [rows, exerciseRows] = await Promise.all([
     prisma.$queryRaw<DayRow[]>`
       SELECT to_char(l.date, 'YYYY-MM-DD') AS day,
-             e.category::text AS category,
+             COALESCE(i.snapshot->>'category', e.category::text) AS category,
              COUNT(*)::int AS total,
              (COUNT(*) FILTER (WHERE i."isChecked"))::int AS done
       FROM daily_logs l
@@ -34,13 +34,15 @@ export async function GET(req: Request) {
       WHERE l."userId" = ${userId}
         AND ((l.date >= ${w.yearStart}::date AND l.date <= ${w.today}::date)
           OR (l.date >= ${w.monthStart}::date AND l.date < ${w.monthEnd}::date))
-      GROUP BY l.date, e.category`,
+      GROUP BY l.date, 2`,
     prisma.$queryRaw<ExerciseRow[]>`
-      SELECT e.name, e.category::text AS category, COUNT(*)::int AS count
+      SELECT e.id, e.name,
+             COALESCE(i.snapshot->>'category', e.category::text) AS category,
+             COUNT(*)::int AS count
       FROM daily_log_items i
       JOIN exercises e ON e.id = i."exerciseId"
       WHERE e."userId" = ${userId} AND i."isChecked"
-      GROUP BY e.id, e.name, e.category
+      GROUP BY e.id, e.name, 3
       ORDER BY count DESC, e.name ASC`,
   ]);
 
