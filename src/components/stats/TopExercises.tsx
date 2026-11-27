@@ -33,7 +33,7 @@ export function TopExercises({ top, all }: Props) {
           <>
             <div className="px-4 md:px-5 space-y-2.5 pb-3">
               {top.map((ex, i) => (
-                <div key={ex.name} className="flex items-center gap-3 py-0.5">
+                <div key={`${i}-${ex.name}`} className="flex items-center gap-3 py-0.5">
                   <div
                     className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0"
                     style={{
@@ -113,7 +113,7 @@ export function TopExercises({ top, all }: Props) {
               {/* Modal list */}
               <div className="overflow-y-auto px-5 py-3 space-y-2.5">
                 {all.map((ex, i) => (
-                  <div key={ex.name} className="flex items-center gap-3 py-0.5">
+                  <div key={`${i}-${ex.name}`} className="flex items-center gap-3 py-0.5">
                     <div
                       className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                       style={{

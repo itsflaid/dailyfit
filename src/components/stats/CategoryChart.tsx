@@ -3,12 +3,12 @@
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import { CATEGORY_LABEL, type ExerciseCategory } from "@/types";
 
-const PIE_COLORS = [
-  "#C41230",
-  "#f97316",
-  "#3b82f6",
-  "#22c55e", 
-];
+const PIE_COLORS: Record<ExerciseCategory, string> = {
+  STRENGTH: "#C41230",
+  CARDIO: "#ea580c",
+  BALANCE: "#2563eb",
+  FLEXIBILITY: "#16a34a",
+};
 
 interface Props {
   data: { name: string; value: number }[];
@@ -29,8 +29,8 @@ export function CategoryChart({ data }: Props) {
         <ResponsiveContainer width="100%" height={180}>
           <PieChart>
             <Pie data={labeled} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={65} innerRadius={35} paddingAngle={2} isAnimationActive={false}>
-              {labeled.map((_, i) => (
-                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              {labeled.map((d) => (
+                <Cell key={d.name} fill={PIE_COLORS[d.name as ExerciseCategory]} />
               ))}
             </Pie>
             <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 11, color: "#64748b" }}>{v}</span>} />

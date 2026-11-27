@@ -32,12 +32,16 @@ const cardVariants: Variants = {
 
 export default function StatsPage() {
   const qc = useQueryClient();
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
   const [animateIn] = useState(() => !qc.getQueryData(statsQuery(getCurrentMonth()).queryKey));
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState<"mingguan" | "bulanan" | null>(null);
 
   const todayKey = useToday();
+  const currentMonth = todayKey.slice(0, 7);
+  const selectedMonth = pickedMonth ?? currentMonth;
+  const changeMonth = (month: string) => setPickedMonth(month === currentMonth ? null : month);
+
   const [logDate, setLogDate] = useState<string | null>(null);
   const activeLogDate = logDate ?? todayKey;
 
@@ -45,7 +49,7 @@ export default function StatsPage() {
 
   const selectLogDate = (key: string) => {
     changeLogDate(key);
-    document.getElementById("log-gerakan")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("log-gerakan")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const REPORT_ENDPOINT: Record<"mingguan" | "bulanan", string> = {
@@ -76,7 +80,13 @@ export default function StatsPage() {
       setExporting(null);
     }
   };
-  const { data: stats, isLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({ ...statsQuery(currentMonth), placeholderData: keepPreviousData });
+  const { data: monthStats } = useQuery({
     ...statsQuery(selectedMonth),
     placeholderData: keepPreviousData,
   });
@@ -92,6 +102,22 @@ export default function StatsPage() {
             style={{ border: "1.5px solid rgba(0,0,0,0.07)" }}
           />
         ))}
+      </div>
+    );
+  }
+
+  if (isError && !stats) {
+    return (
+      <div className="bg-white rounded-2xl p-10 text-center" style={{ border: "1.5px solid rgba(0,0,0,0.07)" }}>
+        <p className="text-sm" style={{ color: "#888" }}>Gagal memuat statistik.</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 text-sm font-semibold"
+          style={{ color: "#C41230" }}
+        >
+          Coba lagi
+        </button>
       </div>
     );
   }
@@ -210,10 +236,6 @@ export default function StatsPage() {
         />
       </motion.div>
 
-      <motion.div variants={cardVariants}>
-        <LogGerakan date={activeLogDate} today={todayKey} onDateChange={changeLogDate} />
-      </motion.div>
-
       <motion.div
         className="grid md:grid-cols-2 gap-4 min-w-0"
         variants={cardVariants}
@@ -224,10 +246,10 @@ export default function StatsPage() {
 
         <div className="min-w-0">
           <MonthlyChart
-            data={stats?.monthlyData ?? []}
-            monthName={stats?.monthName ?? ""}
+            data={monthStats?.monthlyData ?? []}
+            monthName={monthStats?.monthName ?? ""}
             selectedMonth={selectedMonth}
-            onMonthChange={setSelectedMonth}
+            onMonthChange={changeMonth}
           />
         </div>
       </motion.div>
@@ -240,8 +262,9 @@ export default function StatsPage() {
         <CategoryChart data={stats?.categoryData ?? []} />
       </motion.div>
 
-      <motion.div variants={cardVariants}>
+      <motion.div variants={cardVariants} className="space-y-4">
         <ActivityHeatmap selectedDate={activeLogDate} onSelectDate={selectLogDate} />
+        <LogGerakan date={activeLogDate} today={todayKey} onDateChange={changeLogDate} />
       </motion.div>
     </motion.div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { heatmapQuery } from "@/lib/queries";
 import { keyToLocalDate } from "@/lib/dates";
 import { useToday } from "@/lib/use-today";
@@ -77,6 +77,12 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
 
   const weeks = useMemo(() => buildGrid(today), [today]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [isLoading, today]);
+
   const selectDate = (key: string) => {
     if (key > today || !onSelectDate) return;
     setTooltip(null);
@@ -93,12 +99,13 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
     }
   });
 
-  const totalChecked = heatmapData
-    ? Object.values(heatmapData).reduce((a, b) => a + b, 0)
-    : 0;
-  const activeDays = heatmapData
-    ? Object.values(heatmapData).filter((v) => v > 0).length
-    : 0;
+  if (monthPositions.length > 1 && monthPositions[1].col - monthPositions[0].col < 3) {
+    monthPositions.shift();
+  }
+
+  const visibleCounts = weeks.flat().map((date) => heatmapData?.[formatKey(date)] ?? 0);
+  const totalChecked = visibleCounts.reduce((a, b) => a + b, 0);
+  const activeDays = visibleCounts.filter((v) => v > 0).length;
 
   // Minimum width that keeps every cell ≥ MIN_CELL. When the container is
   // narrower than this the inner content overflows and the row scrolls.
@@ -154,6 +161,7 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
 
       {/* Scrollable graph – always fills available width; scrolls only when too narrow */}
       <div
+        ref={scrollRef}
         className="overflow-x-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
@@ -161,7 +169,8 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
           style={{
             width: "100%",
             minWidth: minTotalW,
-            paddingBottom: 4,
+            padding: "0 2px 4px 0",
+            boxSizing: "border-box",
           }}
         >
           {/* Month labels */}
@@ -178,7 +187,7 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
               return (
                 <div
                   key={wi}
-                  style={{ flex: "1 1 0", minWidth: MIN_CELL }}
+                  style={{ flex: "1 1 0", minWidth: MIN_CELL, whiteSpace: "nowrap" }}
                 >
                   {pos && (
                     <span
@@ -206,6 +215,10 @@ export function ActivityHeatmap({ selectedDate, onSelectDate }: HeatmapProps) {
                 display: "flex",
                 flexDirection: "column",
                 gap: GAP,
+                position: "sticky",
+                left: 0,
+                zIndex: 1,
+                background: "#fff",
               }}
             >
               {DAY_LABELS.map((label, i) => (
