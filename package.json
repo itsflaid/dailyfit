@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.468.0",
-    "next": "^16.2.4",
+    "next": "^16.4.6",
     "next-auth": "5.0.0-beta.32",
     "prisma": "^6.0.0",
     "react": "^19.0.0",
