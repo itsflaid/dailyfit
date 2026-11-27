@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import {
@@ -16,29 +16,21 @@ interface Props {
   onSaved: () => void;
 }
 
-export function ExerciseModal({ open, onClose, initial, onSaved }: Props) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<ExerciseCategory>("STRENGTH");
-  const [type, setType] = useState<ExerciseType>("REPS_BASED");
-  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>("CHEST");
-  const [reps, setReps] = useState(12);
-  const [sets, setSets] = useState(3);
-  const [duration, setDuration] = useState(60);
-  const [timeSets, setTimeSets] = useState(3);
-  const [saving, setSaving] = useState(false);
+export function ExerciseModal(props: Props) {
+  if (!props.open) return null;
+  return <ExerciseForm key={props.initial?.id ?? "new"} {...props} />;
+}
 
-  useEffect(() => {
-    if (open) {
-      setName(initial?.name ?? "");
-      setCategory(initial?.category ?? "STRENGTH");
-      setType(initial?.type ?? "REPS_BASED");
-      setMuscleGroup(initial?.muscleGroup ?? "CHEST");
-      setReps(initial?.reps ?? 12);
-      setSets(initial?.sets ?? 3);
-      setDuration(initial?.durationSeconds ?? 60);
-      setTimeSets(initial?.timeSets ?? 3);
-    }
-  }, [open, initial]);
+function ExerciseForm({ onClose, initial, onSaved }: Props) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [category, setCategory] = useState<ExerciseCategory>(initial?.category ?? "STRENGTH");
+  const [type, setType] = useState<ExerciseType>(initial?.type ?? "REPS_BASED");
+  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>(initial?.muscleGroup ?? "CHEST");
+  const [reps, setReps] = useState(initial?.reps ?? 12);
+  const [sets, setSets] = useState(initial?.sets ?? 3);
+  const [duration, setDuration] = useState(initial?.durationSeconds ?? 60);
+  const [timeSets, setTimeSets] = useState(initial?.timeSets ?? 3);
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) return toast.error("Nama latihan wajib diisi");
@@ -79,8 +71,6 @@ export function ExerciseModal({ open, onClose, initial, onSaved }: Props) {
       setSaving(false);
     }
   };
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

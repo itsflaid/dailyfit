@@ -5,6 +5,9 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getMonthlyReportData } from "@/lib/reports/monthly";
 import { MonthlyReportPdf } from "@/lib/reports/MonthlyReportPdf";
 
+const renderPdf = (data: Awaited<ReturnType<typeof getMonthlyReportData>>) =>
+  renderToBuffer(<MonthlyReportPdf data={data} />);
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -14,7 +17,7 @@ export async function GET(req: Request) {
 
     const today = resolveToday(new URL(req.url).searchParams.get("today"));
     const data = await getMonthlyReportData(session.user.id, session.user.name ?? "Pengguna", today);
-    const buffer = await renderToBuffer(<MonthlyReportPdf data={data} />);
+    const buffer = await renderPdf(data);
 
     const filename = `dailyfit-laporan-bulanan-${today}.pdf`;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dumbbell, X } from "lucide-react";
 import { motion } from "framer-motion";
@@ -15,25 +15,23 @@ interface Props {
   initial?: Plan | null;
 }
 
-export function PlanModal({ open, onClose, onSaved, initial }: Props) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+export function PlanModal(props: Props) {
+  if (!props.open) return null;
+  return <PlanForm key={props.initial?.id ?? "new"} {...props} />;
+}
 
-  useEffect(() => {
-    if (open) {
-      setTitle(initial?.title ?? "");
-      setDescription(initial?.description ?? "");
-      setSelectedIds(initial?.items?.map((i) => i.exerciseId) ?? []);
-    }
-  }, [open, initial]);
+function PlanForm({ onClose, onSaved, initial }: Props) {
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    () => initial?.items?.map((i) => i.exerciseId) ?? []
+  );
+  const [saving, setSaving] = useState(false);
 
   const { data: exercises } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
     queryFn: () => fetchJson<Exercise[]>("/api/exercises"),
     staleTime: 5 * 60_000,
-    enabled: open,
   });
 
   const toggle = (id: string) => {
@@ -58,8 +56,6 @@ export function PlanModal({ open, onClose, onSaved, initial }: Props) {
     onClose();
     onSaved();
   };
-
-  if (!open) return null;
 
   const inputStyle = {
     border: "1.5px solid rgba(0,0,0,0.1)",

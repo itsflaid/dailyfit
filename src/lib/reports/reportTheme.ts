@@ -1,5 +1,4 @@
 import { StyleSheet, Font } from "@react-pdf/renderer";
-import { ExerciseCategory } from "@prisma/client";
 import { join } from "node:path";
 
 const fontDir = join(process.cwd(), "public/fonts");

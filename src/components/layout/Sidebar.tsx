@@ -4,12 +4,13 @@ import { Home, Dumbbell, CalendarCheck2, ListChecks, BarChart3, Timer } from "lu
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import type { Session } from "next-auth";
 import { LogOut } from "lucide-react";
 import logo from "@/assets/logo-trans.png";
 import { motion } from "framer-motion";
 
 interface SidebarProps {
-  session: any;
+  session: Session | null;
   handleSignOut: () => void;
 }
 

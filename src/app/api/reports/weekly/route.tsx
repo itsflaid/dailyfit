@@ -5,6 +5,9 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getWeeklyReportData } from "@/lib/reports/weekly";
 import { WeeklyReportPdf } from "@/lib/reports/WeeklyReportPdf";
 
+const renderPdf = (data: Awaited<ReturnType<typeof getWeeklyReportData>>) =>
+  renderToBuffer(<WeeklyReportPdf data={data} />);
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -14,7 +17,7 @@ export async function GET(req: Request) {
 
     const today = resolveToday(new URL(req.url).searchParams.get("today"));
     const data = await getWeeklyReportData(session.user.id, session.user.name ?? "Pengguna", today);
-    const buffer = await renderToBuffer(<WeeklyReportPdf data={data} />);
+    const buffer = await renderPdf(data);
 
     const filename = `dailyfit-laporan-mingguan-${today}.pdf`;
 

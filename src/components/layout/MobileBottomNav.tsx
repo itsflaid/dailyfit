@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Home, Dumbbell, CalendarCheck2, ListChecks, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,11 +37,9 @@ export function MobileBottomNav() {
     activeIndex >= 0 && !isTodayActive ? activeIndex : 0
   );
 
-  useEffect(() => {
-    if (activeIndex >= 0 && !isTodayActive) {
-      setLinePos(activeIndex);
-    }
-  }, [activeIndex, isTodayActive]);
+  if (activeIndex >= 0 && !isTodayActive && linePos !== activeIndex) {
+    setLinePos(activeIndex);
+  }
 
   return (
     <nav

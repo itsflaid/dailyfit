@@ -253,6 +253,8 @@ export default function TodayPage() {
       window.removeEventListener("pagehide", flush);
       flush();
     };
+    // flushDeletes hanya menyentuh ref dan queryClient, jadi versi render pertama cukup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleMutation = useMutation({
@@ -678,7 +680,8 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
   const toggle = (id: string) => {
     if (isSubmitting) return;
     const s = new Set(selected);
-    s.has(id) ? s.delete(id) : s.add(id);
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
     setSelected(s);
   };
 

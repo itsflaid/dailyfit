@@ -113,12 +113,9 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
     Math.min(100, (secondsLeft / duration) * 100)
   );
 
-  const selectedAudioName = useMemo(
-    () => audios.find((a) => a.src === audioSrc)?.name ?? "timer",
-    [audioSrc, audios]
-  );
-
   // ─── Restore from localStorage ───────────────────────────────────────────
+  // localStorage baru bisa dibaca setelah mount, jadi state dipulihkan di sini.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(storageKey);
@@ -138,6 +135,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
       window.localStorage.removeItem(storageKey);
     }
   }, [storageKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Fetch audio options ──────────────────────────────────────────────────
   useEffect(() => {
@@ -175,6 +173,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(presetStorageKey);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setPresets(JSON.parse(saved));
     } catch {
       window.localStorage.removeItem(presetStorageKey);
@@ -193,16 +192,9 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   // ─── Alarm — presisi ke deadline, bukan ikut ritme tick 1 detik ──────────
   useEffect(() => {
     if (!isRunning || hasAlarmed || deadline === null) return;
-    const msLeft = deadline - Date.now();
-
-    if (msLeft <= 0) {
-      setHasAlarmed(true);
-      return;
-    }
-
     const id = window.setTimeout(() => {
       setHasAlarmed(true);
-    }, msLeft);
+    }, Math.max(0, deadline - Date.now()));
 
     return () => window.clearTimeout(id);
   }, [deadline, hasAlarmed, isRunning]);

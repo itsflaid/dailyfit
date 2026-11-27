@@ -24,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Sesi dicabut dari perangkat lain (mis. kata sandi diganti).
   useEffect(() => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     if (status === "unauthenticated" && navigator.onLine) window.location.assign("/login");
   }, [status]);
 
