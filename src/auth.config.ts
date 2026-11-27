@@ -7,18 +7,13 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
   },
   callbacks: {
+    // Halaman auth dialihkan di layout-nya, yang bisa memeriksa apakah sesi sudah dicabut.
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
       const isAuthPage =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register");
 
-      if (isAuthPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
-        return true;
-      }
-
-      return isLoggedIn;
+      return isAuthPage || !!auth?.user;
     },
   },
   providers: [],

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Flame } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { MobileTopbar } from "./MobileTopbar";
@@ -21,6 +21,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     .join("")
     .slice(0, 2)
     .toUpperCase() ?? "U";
+
+  // Sesi dicabut dari perangkat lain (mis. kata sandi diganti).
+  useEffect(() => {
+    if (status === "unauthenticated" && navigator.onLine) window.location.assign("/login");
+  }, [status]);
 
   if (status === "loading") {
     return (

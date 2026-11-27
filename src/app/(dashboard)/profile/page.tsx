@@ -1,9 +1,10 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { User, LogOut, Save, KeyRound, Eye, EyeOff } from "lucide-react";
+import { isValidPassword, PASSWORD_RULE } from "@/lib/password";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
@@ -41,8 +42,8 @@ export default function ProfilePage() {
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 8) return toast.error("Kata sandi minimal 8 karakter");
-    if (newPassword.length > 72) return toast.error("Kata sandi maksimal 72 karakter");
+    if (!currentPassword) return toast.error("Kata sandi saat ini wajib diisi");
+    if (!isValidPassword(newPassword)) return toast.error(PASSWORD_RULE);
     if (newPassword !== confirmPassword)
       return toast.error("Konfirmasi kata sandi tidak cocok");
 
@@ -52,18 +53,26 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
     }).catch(() => null);
-    setSavingPass(false);
 
-    if (!res) return toast.error("Gagal mengubah kata sandi");
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
+    if (!res?.ok) {
+      setSavingPass(false);
+      const data = await res?.json().catch(() => null);
       return toast.error(data?.message ?? "Gagal mengubah kata sandi");
     }
+
+    // Semua sesi lama sudah dicabut, jadi perangkat ini masuk ulang dengan sandi baru.
+    const relogin = await signIn("credentials", {
+      email: session?.user?.email,
+      password: newPassword,
+      redirect: false,
+    });
+    if (!relogin || relogin.error) return signOut({ redirectTo: "/login" });
+    setSavingPass(false);
 
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    toast.success("Kata sandi berhasil diperbarui!");
+    toast.success("Kata sandi diperbarui. Perangkat lain sudah dikeluarkan.");
   };
 
   const handleSignOut = async () => {
@@ -127,22 +136,21 @@ export default function ProfilePage() {
       <div className="bg-white rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-primary-600" />
-          <h2 className="font-bold text-ink">Atur Ulang Kata Sandi</h2>
+          <h2 className="font-bold text-ink">Ganti Kata Sandi</h2>
         </div>
         <p className="text-sm text-muted-foreground -mt-2">
-          Kosongkan kolom &quot;Kata sandi saat ini&quot; jika kamu lupa kata sandi lama —
-          kamu tetap bisa membuat kata sandi baru karena sudah login.
+          Setelah diganti, akun otomatis keluar dari perangkat lain.
         </p>
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">
-            Kata sandi saat ini <span className="text-muted-foreground">(opsional)</span>
+            Kata sandi saat ini
           </label>
           <input
             type={showPass ? "text" : "password"}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            placeholder="Kosongkan jika lupa"
+            placeholder="Kata sandi yang sekarang"
             autoComplete="current-password"
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
           />
@@ -186,7 +194,7 @@ export default function ProfilePage() {
 
         <button
           onClick={handleChangePassword}
-          disabled={savingPass || !newPassword || !confirmPassword}
+          disabled={savingPass || !currentPassword || !newPassword || !confirmPassword}
           className="flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition disabled:opacity-60"
         >
           <KeyRound className="h-4 w-4" />

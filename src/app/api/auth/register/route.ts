@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { isValidPassword, PASSWORD_RULE } from "@/lib/password";
+import { clientIp, hitRateLimit, RATE_LIMITS, tooManyRequests } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,10 +23,12 @@ export async function POST(req: NextRequest) {
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ message: "Format email tidak valid" }, { status: 400 });
     }
-    // bcrypt hanya memproses 72 byte pertama
-    if (password.length < 8 || password.length > 72) {
-      return NextResponse.json({ message: "Password harus 8–72 karakter" }, { status: 400 });
+    if (!isValidPassword(password)) {
+      return NextResponse.json({ message: PASSWORD_RULE }, { status: 400 });
     }
+
+    const retryAfter = await hitRateLimit(RATE_LIMITS.register, clientIp(req));
+    if (retryAfter) return tooManyRequests(retryAfter);
 
     const existing = await prisma.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },

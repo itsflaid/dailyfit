@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { isValidPassword, PASSWORD_RULE } from "@/lib/password";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) return toast.error("Password minimal 8 karakter");
+    if (!isValidPassword(password)) return toast.error(PASSWORD_RULE);
     setLoading(true);
 
     const res = await fetch("/api/auth/register", {

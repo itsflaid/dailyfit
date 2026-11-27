@@ -19,7 +19,9 @@ export default function LoginPage() {
     setLoading(true);
     const res = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
-    if (res?.error) {
+    if (res?.code === "rate_limited") {
+      toast.error("Terlalu banyak percobaan. Coba lagi dalam 15 menit.");
+    } else if (res?.error) {
       toast.error("Email atau password salah");
     } else {
       router.push("/");
