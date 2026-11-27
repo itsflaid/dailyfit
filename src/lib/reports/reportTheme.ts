@@ -7,8 +7,8 @@ const fontDir = join(process.cwd(), "public/fonts");
 Font.register({
   family: "DM Sans",
   fonts: [
-    { src: join(fontDir, "DMSansVariable.ttf"), fontWeight: 400 },
-    { src: join(fontDir, "DMSansVariable.ttf"), fontWeight: 700 },
+    { src: join(fontDir, "DMSans-Regular.ttf"), fontWeight: 400 },
+    { src: join(fontDir, "DMSans-Bold.ttf"), fontWeight: 700 },
   ],
 });
 Font.register({
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
   colExercise: { width: "50%" },
   colCategory: { width: "27%" },
   colAmount: { width: "23%", textAlign: "right" },
-  exerciseNameCell: { fontSize: 9, color: INK, fontWeight: 600 },
+  exerciseNameCell: { fontSize: 9, color: INK },
   amountCell: { fontSize: 9, color: INK, fontWeight: 700, textAlign: "right" },
   categoryBadge: { alignSelf: "flex-start", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   categoryBadgeText: { fontSize: 7, fontWeight: 700 },
