@@ -9,7 +9,10 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate",
+    "user:reset-password": "node scripts/reset-password.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

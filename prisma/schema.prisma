@@ -9,14 +9,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String?
-  googleId  String?  @unique
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  password       String?
+  googleId       String?  @unique
+  avatar         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sessionVersion Int      @default(0)
 
   exercises Exercise[]
   plans     Plan[]
@@ -61,6 +62,7 @@ model Exercise {
   timeSets        Int?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
 
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   planItems PlanItem[]
@@ -119,6 +121,7 @@ model DailyLogItem {
   isChecked  Boolean @default(false)
   order      Int
   source     String
+  snapshot   Json?
 
   dailyLog DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
@@ -126,4 +129,13 @@ model DailyLogItem {
   @@unique([dailyLogId, exerciseId])
   @@index([exerciseId, isChecked])
   @@map("daily_log_items")
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @db.Timestamptz(3)
+
+  @@index([resetAt])
+  @@map("rate_limits")
 }
