@@ -81,10 +81,10 @@ export function buildStats(
   });
 
   const isActive = (ms: number) => (byDay.get(keyOf(ms))?.done ?? 0) > 0;
-  let streak = 0;
-  while (streak < 365 && isActive(todayMs - streak * DAY_MS)) streak++;
   let previousStreak = 0;
   while (previousStreak < 364 && isActive(todayMs - (previousStreak + 1) * DAY_MS)) previousStreak++;
+  // Hari ini belum berakhir, jadi streak dari kemarin masih berlaku.
+  const streak = previousStreak + (isActive(todayMs) ? 1 : 0);
 
   // Satu latihan bisa muncul di beberapa baris bila kategorinya pernah diganti.
   const byExercise = new Map<string, { name: string; count: number }>();

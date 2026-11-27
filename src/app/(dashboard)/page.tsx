@@ -15,6 +15,8 @@ export default function HomePage() {
   const today = useToday();
   const { data: stats, isLoading } = useQuery(statsQuery(today.slice(0, 7)));
 
+  const doneToday = (stats?.weeklyData.at(-1)?.completed ?? 0) > 0;
+
   const progress = stats && stats.totalWeek > 0
     ? Math.round((stats.completedWeek / stats.totalWeek) * 100)
     : 0;
@@ -81,7 +83,9 @@ export default function HomePage() {
               <span className="text-sm text-muted-foreground">hari berturut</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Centang minimal satu latihan setiap hari untuk menjaga streak.
+              {doneToday
+                ? "Streak hari ini sudah aman."
+                : "Centang minimal satu latihan hari ini untuk menjaga streak."}
             </p>
           </div>
         </div>

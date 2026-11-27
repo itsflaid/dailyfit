@@ -91,7 +91,7 @@ function applyStatsDelta(
       checkedBefore !== undefined && checkedBefore === 0 && completedDelta > 0
         ? (stats.previousStreak ?? 0) + 1
         : checkedBefore !== undefined && checkedBefore === 1 && completedDelta < 0
-          ? 0
+          ? (stats.previousStreak ?? 0)
           : stats.streak,
     completedWeek: Math.max(0, stats.completedWeek + completedDelta),
     completedMonth: includesMonth
