@@ -6,12 +6,18 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { formatDateLabel } from "@/lib/utils";
-import { fetchJson, PROGRESS_MUTATION_KEY } from "@/lib/queries";
+import { dailyLogQuery, fetchJson, PROGRESS_MUTATION_KEY } from "@/lib/queries";
 import { keyToLocalDate } from "@/lib/dates";
 import { useToday } from "@/lib/use-today";
-import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type Exercise, type ExerciseCategory, type Plan, type StatsData } from "@/types";
+import { exerciseDetail, CATEGORY_LABEL, type DailyLog, type DailyLogItem, type Exercise, type ExerciseCategory, type Plan, type StatsData } from "@/types";
 
 type StatsSnapshot = [QueryKey, StatsData | undefined][];
+
+type PendingDelete = {
+  timeoutId: ReturnType<typeof setTimeout>;
+  date: string;
+  item: DailyLogItem;
+};
 
 function updateCachedStats(
   qc: ReturnType<typeof useQueryClient>,
@@ -142,10 +148,12 @@ export default function TodayPage() {
   // keliatan instan tanpa nunggu fade-in 0.2s replay tiap pindah halaman.
   const [skipEntrance] = useState(() => !!qc.getQueryData(["daily", date]));
 
-  const { data: log, isLoading } = useQuery<DailyLog>({
-    queryKey: ["daily", date],
-    queryFn: () => fetchJson<DailyLog>(`/api/daily-logs?date=${date}`),
-  });
+  const {
+    data: log,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({ ...dailyLogQuery(date), staleTime: 30_000 });
 
   const items = log?.items ?? [];
   const completed = items.filter((i) => i.isChecked).length;
@@ -153,52 +161,54 @@ export default function TodayPage() {
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
   const prefersReduced = useReducedMotion();
-  const pendingDeletes = useRef<Map<string, {
-    timeoutId: ReturnType<typeof setTimeout>;
-    previousLog?: DailyLog;
-    previousStats: StatsSnapshot;
-    previousHeatmap?: Record<string, number>;
-  }>>(new Map());
+  const pendingDeletes = useRef<Map<string, PendingDelete>>(new Map());
 
   const refreshProgressCaches = () => {
     if (qc.isMutating({ mutationKey: PROGRESS_MUTATION_KEY }) > 1) return;
     if (pendingDeletes.current.size > 0) return;
-    qc.invalidateQueries({ queryKey: ["daily", date] });
+    qc.invalidateQueries({ queryKey: ["daily"] });
     qc.invalidateQueries({ queryKey: ["stats"] });
     qc.invalidateQueries({ queryKey: ["heatmap"] });
   };
 
-  const handleDelete = (item: DailyLog["items"][0]) => {
-    Promise.all([
+  // Perubahan per item, supaya undo satu hapusan tidak menimpa hapusan lain yang masih tertunda.
+  const applyRemoval = ({ item, date: day }: Omit<PendingDelete, "timeoutId">, direction: -1 | 1) => {
+    const checkedBefore =
+      qc.getQueryData<DailyLog>(["daily", day])?.items.filter((i) => i.isChecked).length ?? 0;
+
+    qc.setQueryData<DailyLog>(["daily", day], (old) => {
+      if (!old) return old;
+      const rest = old.items.filter((i) => i.id !== item.id);
+      return {
+        ...old,
+        items: direction < 0 ? rest : [...rest, item].sort((a, b) => b.order - a.order),
+      };
+    });
+
+    const completedDelta = item.isChecked ? direction : 0;
+    updateCachedStats(qc, day, (stats, includesMonth) =>
+      applyStatsDelta(stats, item.exercise, completedDelta, direction, day, includesMonth, checkedBefore)
+    );
+
+    if (completedDelta !== 0) {
+      qc.setQueryData<Record<string, number>>(["heatmap"], (old) =>
+        applyHeatmapDelta(old, day, completedDelta)
+      );
+    }
+  };
+
+  const handleDelete = async (item: DailyLogItem) => {
+    if (pendingDeletes.current.has(item.id)) return;
+    await Promise.all([
       qc.cancelQueries({ queryKey: ["daily", date] }),
       qc.cancelQueries({ queryKey: ["stats"] }),
       qc.cancelQueries({ queryKey: ["heatmap"] }),
     ]);
 
-    const previousLog = qc.getQueryData<DailyLog>(["daily", date]);
-    const previousStats = qc.getQueriesData<StatsData>({ queryKey: ["stats"] });
-    const previousHeatmap = qc.getQueryData<Record<string, number>>(["heatmap"]);
-    const checkedBefore = previousLog?.items.filter((i) => i.isChecked).length ?? 0;
-
-    qc.setQueryData<DailyLog>(["daily", date], (old) => {
-      if (!old) return old;
-      return { ...old, items: old.items.filter((i) => i.id !== item.id) };
-    });
-
-    const completedDelta = item.isChecked ? -1 : 0;
-    updateCachedStats(qc, date, (stats, includesMonth) =>
-      applyStatsDelta(stats, item.exercise, completedDelta, -1, date, includesMonth, checkedBefore)
-    );
-
-    if (completedDelta !== 0) {
-      qc.setQueryData<Record<string, number>>(
-        ["heatmap"],
-        (old) => applyHeatmapDelta(old, date, completedDelta)
-      );
-    }
-
     const timeoutId = setTimeout(() => commitDelete(item.id), 4000);
-    pendingDeletes.current.set(item.id, { timeoutId, previousLog, previousStats, previousHeatmap });
+    const entry = { timeoutId, date, item };
+    pendingDeletes.current.set(item.id, entry);
+    applyRemoval(entry, -1);
 
     toast.error("Latihan dihapus", {
       action: {
@@ -213,36 +223,35 @@ export default function TodayPage() {
     const entry = pendingDeletes.current.get(id);
     if (!entry) return;
     clearTimeout(entry.timeoutId);
-    qc.setQueryData(["daily", date], entry.previousLog);
-    entry.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
-    qc.setQueryData(["heatmap"], entry.previousHeatmap);
     pendingDeletes.current.delete(id);
+    applyRemoval(entry, 1);
+    refreshProgressCaches();
   };
 
   const commitDelete = async (id: string) => {
     const entry = pendingDeletes.current.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timeoutId);
     pendingDeletes.current.delete(id);
     try {
-      const res = await fetch(`/api/daily-logs/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/daily-logs/${id}`, { method: "DELETE", keepalive: true });
       if (!res.ok) throw new Error("delete gagal");
     } catch {
-      if (entry) {
-        qc.setQueryData(["daily", date], entry.previousLog);
-        entry.previousStats.forEach(([key, stats]) => qc.setQueryData(key, stats));
-        qc.setQueryData(["heatmap"], entry.previousHeatmap);
-      }
+      applyRemoval(entry, 1);
       toast.error("Gagal menghapus");
     }
     refreshProgressCaches();
   };
 
+  const flushDeletes = () =>
+    Promise.all(Array.from(pendingDeletes.current.keys(), commitDelete));
+
   useEffect(() => {
+    const flush = () => void flushDeletes();
+    window.addEventListener("pagehide", flush);
     return () => {
-      pendingDeletes.current.forEach((entry, id) => {
-        clearTimeout(entry.timeoutId);
-        fetch(`/api/daily-logs/${id}`, { method: "DELETE" }).catch(() => {});
-      });
-      pendingDeletes.current.clear();
+      window.removeEventListener("pagehide", flush);
+      flush();
     };
   }, []);
 
@@ -400,6 +409,11 @@ export default function TodayPage() {
   };
 
   const addExercises = async (exercises: Exercise[], source: "plan" | "manual") => {
+    if (exercises.length === 0) {
+      toast.info("Rencana ini belum punya latihan");
+      return;
+    }
+    await flushDeletes();
     await addMutation.mutateAsync({ exercises, source });
   };
 
@@ -465,6 +479,13 @@ export default function TodayPage() {
               <div className="h-8 w-8 rounded-xl bg-slate-200" />
             </div>
           ))}
+        </div>
+      ) : isError && !log ? (
+        <div className="border-2 border-dashed rounded-2xl p-12 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Gagal memuat latihan hari ini.</p>
+          <button onClick={() => refetch()} className="text-sm font-semibold text-primary-600">
+            Coba lagi
+          </button>
         </div>
       ) : !items.length ? (
         <div className="border-2 border-dashed rounded-2xl p-12 text-center space-y-3">
@@ -558,7 +579,7 @@ export default function TodayPage() {
 function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exercises: Exercise[]) => Promise<void> }) {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-  const { data: plans } = useQuery<Plan[]>({
+  const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["plans"],
     queryFn: () => fetchJson<Plan[]>("/api/plans"),
     staleTime: 5 * 60_000,
@@ -585,7 +606,9 @@ function PickPlanModal({ onClose, onPick }: { onClose: () => void; onPick: (exer
         <h2 className="text-lg font-bold text-ink">Pilih Rencana</h2>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
           {!plans?.length ? (
-            <div className="text-sm text-muted-foreground text-center py-6">Belum ada rencana.</div>
+            <div className="text-sm text-muted-foreground text-center py-6">
+              {isLoading ? "Memuat rencana…" : "Belum ada rencana."}
+            </div>
           ) : plans.map((p) => {
             const isThisSubmitting = submittingId === p.id;
             const isDimmed = submittingId !== null && !isThisSubmitting;
@@ -639,7 +662,7 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterCategory, setFilterCategory] = useState<ExerciseCategory | typeof ALL>(ALL);
 
-  const { data: exercises } = useQuery<Exercise[]>({
+  const { data: exercises, isLoading } = useQuery<Exercise[]>({
     queryKey: ["exercises"],
     queryFn: () => fetchJson<Exercise[]>("/api/exercises"),
     staleTime: 5 * 60_000,
@@ -707,7 +730,9 @@ function PickExerciseModal({ onClose, onPick }: { onClose: () => void; onPick: (
 
         <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {!exercises?.length ? (
-            <div className="text-sm text-muted-foreground text-center py-6">Belum ada latihan di pustaka.</div>
+            <div className="text-sm text-muted-foreground text-center py-6">
+              {isLoading ? "Memuat latihan…" : "Belum ada latihan di pustaka."}
+            </div>
           ) : !filtered.length ? (
             <div className="text-sm text-muted-foreground text-center py-6">Tidak ada latihan dengan filter ini.</div>
           ) : filtered.map((ex) => (

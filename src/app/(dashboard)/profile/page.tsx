@@ -1,14 +1,12 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { User, LogOut, Save, KeyRound, Eye, EyeOff } from "lucide-react";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
-  const router = useRouter();
   const [name, setName] = useState(session?.user?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -34,10 +32,10 @@ export default function ProfilePage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
-    });
+    }).catch(() => null);
 
     setSaving(false);
-    if (!res.ok) return toast.error("Gagal memperbarui profil");
+    if (!res?.ok) return toast.error("Gagal memperbarui profil");
     await update({ name });
     toast.success("Profil diperbarui!");
   };
@@ -53,9 +51,10 @@ export default function ProfilePage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
-    });
+    }).catch(() => null);
     setSavingPass(false);
 
+    if (!res) return toast.error("Gagal mengubah kata sandi");
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       return toast.error(data?.message ?? "Gagal mengubah kata sandi");
@@ -69,8 +68,7 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     setSigningOut(true);
-    await signOut({ redirect: false });
-    router.push("/login");
+    await signOut({ redirectTo: "/login" });
   };
 
   return (
@@ -101,6 +99,7 @@ export default function ProfilePage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nama lengkap"
+            maxLength={100}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
           />
         </div>
@@ -198,7 +197,7 @@ export default function ProfilePage() {
       {/* Danger zone */}
       <div className="bg-white rounded-2xl border border-red-100 p-6 shadow-sm space-y-3">
         <h2 className="font-bold text-ink">Keluar</h2>
-        <p className="text-sm text-muted-foreground">Anda akan keluar dari semua perangkat.</p>
+        <p className="text-sm text-muted-foreground">Anda akan keluar dari akun di perangkat ini.</p>
         <button
           onClick={handleSignOut}
           disabled={signingOut}

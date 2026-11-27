@@ -24,11 +24,11 @@ export default function RegisterPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
-    });
+    }).catch(() => null);
 
-    if (!res.ok) {
-      const data = await res.json();
-      toast.error(data.message ?? "Registrasi gagal");
+    if (!res?.ok) {
+      const data = await res?.json().catch(() => null);
+      toast.error(data?.message ?? "Registrasi gagal");
       setLoading(false);
       return;
     }
@@ -67,6 +67,7 @@ export default function RegisterPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nama lengkap"
+          maxLength={100}
           required
           className="w-full px-4 py-[14px] rounded-[11px] text-[0.92rem] font-medium bg-white outline-none transition"
           style={inputStyle}

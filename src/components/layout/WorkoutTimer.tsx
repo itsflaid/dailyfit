@@ -5,9 +5,9 @@ import { ChevronDown, Pause, Play, Plus, Pencil, RefreshCw, Square, Timer, Trash
 import { useTimerAudio } from "./TimerAudioProvider";
 
 const FALLBACK_AUDIO: TimerAudio = {
-  fileName: "timer.mp3",
-  name: "timer",
-  src: "/audio/timer.mp3",
+  fileName: "timer-1.wav",
+  name: "timer 1",
+  src: "/audio/timer-1.wav",
 };
 const DEFAULT_SECONDS = 5 * 60;
 const STORAGE_PREFIX = "dailyfit-workout-timer";
@@ -96,6 +96,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   >(null);
   const [presetModalName, setPresetModalName] = useState("");
   const [presetModalDuration, setPresetModalDuration] = useState(DEFAULT_SECONDS);
+  const [restoredKey, setRestoredKey] = useState<string | null>(null);
   const storageKey = `${STORAGE_PREFIX}:${userKey ?? "guest"}`;
   const presetStorageKey = `${PRESET_STORAGE_PREFIX}:${userKey ?? "guest"}`;
   const selectedPreset = presets.find((p) => p.id === selectedPresetId) ?? null;
@@ -121,6 +122,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(storageKey);
+      setRestoredKey(storageKey);
       if (!saved) return;
       const parsed = JSON.parse(saved) as StoredTimer;
       const nextSecondsLeft = parsed.isRunning
@@ -157,6 +159,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
 
   // ─── Persist to localStorage ─────────────────────────────────────────────
   useEffect(() => {
+    if (restoredKey !== storageKey) return;
     const payload: StoredTimer = {
       duration,
       secondsLeft,
@@ -166,7 +169,7 @@ export function WorkoutTimer({ userKey }: WorkoutTimerProps) {
       audioSrc,
     };
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
-  }, [audioSrc, deadline, duration, hasAlarmed, isRunning, secondsLeft, storageKey]);
+  }, [audioSrc, deadline, duration, hasAlarmed, isRunning, restoredKey, secondsLeft, storageKey]);
 
   // ─── Load presets ──────────────────────────────────────────────────────
   useEffect(() => {

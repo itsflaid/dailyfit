@@ -37,16 +37,21 @@ export default function ExercisesPage() {
     });
   }, [data, filterCategory, filterMuscle]);
 
+  const refreshExerciseCaches = () => {
+    for (const key of ["exercises", "plans", "daily", "stats", "heatmap"]) {
+      qc.invalidateQueries({ queryKey: [key] });
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
-    const res = await fetch(`/api/exercises/${deleteId}`, { method: "DELETE" });
+    const res = await fetch(`/api/exercises/${deleteId}`, { method: "DELETE" }).catch(() => null);
     setDeleting(false);
     setDeleteId(null);
-    if (!res.ok) return toast.error("Gagal menghapus");
+    if (!res?.ok) return toast.error("Gagal menghapus");
     toast.success("Latihan dihapus");
-    qc.invalidateQueries({ queryKey: ["exercises"] });
-    qc.invalidateQueries({ queryKey: ["plans"] });
+    refreshExerciseCaches();
   };
 
   const hasFilter = filterCategory !== ALL || filterMuscle !== ALL;
@@ -289,10 +294,7 @@ export default function ExercisesPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         initial={editing}
-        onSaved={() => {
-          qc.invalidateQueries({ queryKey: ["exercises"] });
-          qc.invalidateQueries({ queryKey: ["plans"] });
-        }}
+        onSaved={refreshExerciseCaches}
       />
 
       {deleteId && (
@@ -300,7 +302,7 @@ export default function ExercisesPage() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteId(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h3 className="font-display text-2xl" style={{ color: "#0F0A0B" }}>Hapus latihan?</h3>
-            <p className="text-sm" style={{ color: "#888" }}>Tindakan ini permanen dan tidak bisa dibatalkan.</p>
+            <p className="text-sm" style={{ color: "#888" }}>Riwayat latihan ini di log harian, statistik, dan streak ikut terhapus permanen.</p>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setDeleteId(null)}

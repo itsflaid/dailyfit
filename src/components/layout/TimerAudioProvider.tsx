@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
 
-const FALLBACK_AUDIO: TimerAudio = { fileName: "timer.mp3", name: "timer", src: "/audio/timer.mp3" };
+const FALLBACK_AUDIO: TimerAudio = { fileName: "timer-1.wav", name: "timer 1", src: "/audio/timer-1.wav" };
 const STORAGE_PREFIX = "dailyfit-workout-timer";
 
 type TimerAudio = {
@@ -92,7 +92,7 @@ export function TimerAudioProvider({ children, userKey }: { children: ReactNode;
       audio.pause();
       audio.currentTime = 0;
     };
-  }, [isAlarming]);
+  }, [isAlarming, audioSrc]);
 
   const stopAlarm = useCallback(() => {
     try {

@@ -26,10 +26,10 @@ export default function PlansPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
-    const res = await fetch(`/api/plans/${deleteId}`, { method: "DELETE" });
+    const res = await fetch(`/api/plans/${deleteId}`, { method: "DELETE" }).catch(() => null);
     setDeleting(false);
     setDeleteId(null);
-    if (!res.ok) return toast.error("Gagal menghapus");
+    if (!res?.ok) return toast.error("Gagal menghapus");
     toast.success("Rencana dihapus");
     qc.invalidateQueries({ queryKey: ["plans"] });
   };

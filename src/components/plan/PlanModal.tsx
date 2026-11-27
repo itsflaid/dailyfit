@@ -50,10 +50,10 @@ export function PlanModal({ open, onClose, onSaved, initial }: Props) {
       method: initial ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, description, exerciseIds: selectedIds }),
-    });
+    }).catch(() => null);
 
     setSaving(false);
-    if (!res.ok) return toast.error("Gagal menyimpan");
+    if (!res?.ok) return toast.error("Gagal menyimpan");
     toast.success(initial ? "Rencana diperbarui!" : "Rencana dibuat!");
     onClose();
     onSaved();
@@ -98,6 +98,7 @@ export function PlanModal({ open, onClose, onSaved, initial }: Props) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Contoh: Latihan Pagi"
+            maxLength={100}
             className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition"
             style={inputStyle}
             onFocus={(e) => (e.target.style.borderColor = "#C41230")}
@@ -111,6 +112,7 @@ export function PlanModal({ open, onClose, onSaved, initial }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Deskripsi singkat..."
+            maxLength={500}
             rows={2}
             className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition resize-none"
             style={inputStyle}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { type ReactNode } from "react";
 import { Flame } from "lucide-react";
 import { Sidebar } from "./Sidebar";
@@ -11,12 +10,8 @@ import { TimerAudioProvider } from "./TimerAudioProvider";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const router = useRouter();
-
-  const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    router.push("/login");
-  };
+  // Navigasi penuh supaya cache query milik akun sebelumnya ikut terbuang.
+  const handleSignOut = () => signOut({ redirectTo: "/login" });
 
   const userKey = session?.user?.email ?? session?.user?.name ?? "guest";
 

@@ -41,6 +41,10 @@ export function ExerciseModal({ open, onClose, initial, onSaved }: Props) {
 
   const handleSave = async () => {
     if (!name.trim()) return toast.error("Nama latihan wajib diisi");
+    const amounts = type === "REPS_BASED" ? [reps, sets] : [duration, timeSets];
+    if (!amounts.every((n) => Number.isInteger(n) && n >= 1)) {
+      return toast.error("Reps, durasi, dan set harus angka bulat minimal 1");
+    }
     setSaving(true);
 
     const payload = {
@@ -97,6 +101,7 @@ export function ExerciseModal({ open, onClose, initial, onSaved }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Push up"
+            maxLength={100}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
           />
         </div>

@@ -32,7 +32,7 @@ export function MobileTopbar({ initials, handleSignOut }: MobileTopbarProps) {
         </Link>
 
         <div className="relative group">
-          <button className="flex items-center gap-1.5 rounded-xl px-2 py-1.5" style={{ background: "rgba(0,0,0,0.04)" }}>
+          <button type="button" tabIndex={0} aria-label="Menu akun" className="flex items-center gap-1.5 rounded-xl px-2 py-1.5" style={{ background: "rgba(0,0,0,0.04)" }}>
             <div className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: "#C41230" }}>
               {initials}
             </div>
