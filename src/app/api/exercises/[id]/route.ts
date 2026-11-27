@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { parseExercise, readJson } from "@/lib/validation";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -8,26 +9,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const userId = session.user.id;
   const { id } = await params;
-  const body = await req.json();
+  const body = await readJson(req);
 
   const existing = await prisma.exercise.findFirst({
     where: { id, userId },
   });
   if (!existing) return NextResponse.json({ message: "Tidak ditemukan" }, { status: 404 });
 
-  const exercise = await prisma.exercise.update({
-    where: { id },
-    data: {
-      name: body.name ?? existing.name,
-      category: body.category ?? existing.category,
-      type: body.type ?? existing.type,
-      muscleGroup: body.muscleGroup ?? existing.muscleGroup,
-      reps: body.reps ?? null,
-      sets: body.sets ?? null,
-      durationSeconds: body.durationSeconds ?? null,
-      timeSets: body.timeSets ?? null,
-    },
-  });
+  const data = body && parseExercise({ ...existing, ...body });
+  if (!data) return NextResponse.json({ message: "Data latihan tidak valid" }, { status: 400 });
+
+  const exercise = await prisma.exercise.update({ where: { id }, data });
 
   return NextResponse.json(exercise);
 }

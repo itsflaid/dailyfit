@@ -87,7 +87,7 @@ export async function getMonthlyReportData(
       const ex = item.exercise;
       const isTimeBased = ex.type === "TIME_BASED";
       const amount = isTimeBased
-        ? ex.durationSeconds ?? 0
+        ? (ex.durationSeconds ?? 0) * (ex.timeSets ?? 1)
         : (ex.reps ?? 0) * (ex.sets ?? 1);
 
       const existing = grouped.get(ex.id);

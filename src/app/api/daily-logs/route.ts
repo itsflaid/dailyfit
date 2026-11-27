@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import { isDateKey } from "@/lib/dates";
 
 const withItems = {
   items: { include: { exercise: true }, orderBy: { order: "desc" as const } },
@@ -13,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const date = req.nextUrl.searchParams.get("date");
-  if (!date || !DATE_RE.test(date)) {
+  if (!isDateKey(date)) {
     return NextResponse.json({ message: "Date tidak valid" }, { status: 400 });
   }
 
@@ -33,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const { date, exerciseIds, source } = body ?? {};
-  if (!DATE_RE.test(date ?? "") || !Array.isArray(exerciseIds) || exerciseIds.length === 0) {
+  if (!isDateKey(date) || !Array.isArray(exerciseIds) || exerciseIds.length === 0) {
     return NextResponse.json({ message: "Data tidak lengkap" }, { status: 400 });
   }
 

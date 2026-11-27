@@ -79,7 +79,7 @@ export function WeeklyReportPdf({ data }: { data: WeeklyReportData }) {
 
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total Hari Latihan</Text>
-            <View>
+            <View style={{ alignItems: "flex-end" }}>
               <Text style={styles.summaryValue}>{data.summary.daysTrained} dari 7 hari</Text>
               <View style={styles.dotsRow}>
                 {data.days.slice().reverse().map((d) => (

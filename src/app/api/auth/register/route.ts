@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
     if (!name || !email || !password) {
       return NextResponse.json({ message: "Semua field wajib diisi" }, { status: 400 });
     }
+    if (name.length > 100) {
+      return NextResponse.json({ message: "Nama maksimal 100 karakter" }, { status: 400 });
+    }
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ message: "Format email tidak valid" }, { status: 400 });
     }

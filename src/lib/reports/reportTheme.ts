@@ -23,16 +23,16 @@ export const OFF = "#F6F4F1";
 
 export const CATEGORY_TINT: Record<string, string> = {
   STRENGTH: "#FBE7EA",
-  CARDIO: "#E7EEFD",
-  BALANCE: "#E5F5EA",
-  FLEXIBILITY: "#F3E8FC",
+  CARDIO: "#FDEBDD",
+  BALANCE: "#E7EEFD",
+  FLEXIBILITY: "#E5F5EA",
 };
 
 export const CATEGORY_COLOR: Record<string, string> = {
   STRENGTH: "#C41230",
-  CARDIO: "#2563EB",
-  BALANCE: "#16A34A",
-  FLEXIBILITY: "#9333EA",
+  CARDIO: "#EA580C",
+  BALANCE: "#2563EB",
+  FLEXIBILITY: "#16A34A",
 };
 
 export const WEEKDAY = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];

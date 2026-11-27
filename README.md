@@ -22,7 +22,7 @@ npm install
 
 ### 2. Environment variables
 
-Copy `.env.example` ke `.env.local` dan isi:
+Copy `.env.example` ke `.env` dan isi (Prisma CLI hanya membaca `.env`):
 
 ```env
 DATABASE_URL="postgresql://user:password@ep-xxxx.neon.tech/dbname?sslmode=require"
@@ -38,7 +38,7 @@ openssl rand -base64 32
 
 ```bash
 npm run db:generate   # Generate Prisma client
-npm run db:migrate    # Run migrations
+npm run db:push       # Sinkronkan schema ke database
 ```
 
 ### 4. Jalankan
@@ -55,8 +55,10 @@ Buka [http://localhost:3000](http://localhost:3000)
 - ✅ Exercise Library (CRUD, reps/time-based, muscle group)
 - ✅ Plans (buat rencana dari exercise library)
 - ✅ Daily Checklist (load plan / manual, gabung tanpa hapus)
-- ✅ Statistics (streak, weekly chart, top 3, kategori)
-- ✅ Profile (edit nama)
+- ✅ Statistics (streak, weekly chart, top 5, kategori, heatmap, log gerakan)
+- ✅ Profile (edit nama, ganti kata sandi)
+- ✅ Workout timer dengan preset dan alarm
+- ✅ Laporan PDF mingguan dan bulanan
 - ✅ Sidebar desktop + Bottom nav mobile (5 item)
 - ✅ Profile di top bar mobile
 

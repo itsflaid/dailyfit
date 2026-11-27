@@ -1,8 +1,9 @@
+import { isDateKey } from "./dates";
+
 export const CATEGORIES = ["STRENGTH", "CARDIO", "BALANCE", "FLEXIBILITY"] as const;
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const DAY_MS = 86_400_000;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export type DayRow = { day: string; category: string; total: number; done: number };
@@ -12,9 +13,7 @@ const keyOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const msOf = (key: string) => Date.parse(`${key}T00:00:00Z`);
 
 export function resolveToday(param: string | null): string {
-  return param && DATE_RE.test(param) && !isNaN(msOf(param))
-    ? param
-    : new Date().toISOString().slice(0, 10);
+  return isDateKey(param) ? param : new Date().toISOString().slice(0, 10);
 }
 
 export function resolveMonth(param: string | null, todayKey: string): string {
