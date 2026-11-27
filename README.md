@@ -36,10 +36,22 @@ openssl rand -base64 32
 
 ### 3. Database
 
+Database baru (kosong):
+
 ```bash
-npm run db:generate   # Generate Prisma client
-npm run db:push       # Sinkronkan schema ke database
+npm run db:deploy     # Jalankan semua migrasi
 ```
+
+Database lama yang dulu dibuat dengan `db:push` cukup menandai migrasi awal sekali, lalu menjalankan sisanya:
+
+```bash
+npx prisma migrate resolve --applied 20261101000000_init
+npm run db:deploy
+```
+
+Untuk Neon, jalankan migrasi dengan connection string *direct* (host tanpa `-pooler`). Prisma client dibuat otomatis saat `npm install`.
+
+Perubahan schema berikutnya: `npm run db:migrate` di database development, commit folder `prisma/migrations`, lalu `npm run db:deploy` ke production **sebelum** kode barunya di-deploy.
 
 ### 4. Jalankan
 
@@ -49,10 +61,30 @@ npm run dev
 
 Buka [http://localhost:3000](http://localhost:3000)
 
+### 5. Pemeriksaan
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+```
+
+## Akun & keamanan
+
+- Ganti kata sandi dari halaman Profil. Kata sandi lama wajib diisi dan sesi di perangkat lain ikut keluar (paling lambat 30 detik).
+- Lupa kata sandi (belum ada reset lewat email), jalankan di mesin yang punya akses database:
+
+  ```bash
+  npm run user:reset-password -- email@contoh.com
+  ```
+
+- Batas percobaan: login 5x per akun dari satu IP dan 30x per IP tiap 15 menit, daftar 5x per IP tiap jam, ganti kata sandi 5x tiap 15 menit.
+- Alamat IP dibaca dari `x-forwarded-for`. Di server sendiri, pastikan reverse proxy menimpa header itu.
+
 ## Fitur
 
 - ✅ Auth (Register + Login)
-- ✅ Exercise Library (CRUD, reps/time-based, muscle group)
+- ✅ Exercise Library (CRUD, reps/time-based, muscle group; menghapus latihan tidak menghapus riwayat)
 - ✅ Plans (buat rencana dari exercise library)
 - ✅ Daily Checklist (load plan / manual, gabung tanpa hapus)
 - ✅ Statistics (streak, weekly chart, top 5, kategori, heatmap, log gerakan)
